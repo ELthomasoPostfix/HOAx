@@ -1,11 +1,6 @@
-OUT_DIR=$1
-OUT_EXE_NAME=$2
+OUT_DIR=output
+OUT_EXE_NAME=main.out
 OUT_EXE=$OUT_DIR/$OUT_EXE_NAME
-
-if [ ! $# -eq 2 ]; then
-    echo "Provided $# arguments. Expected 2 arguments."
-    exit 1
-fi
 
 if [ -d $OUT_DIR ];
 then
