@@ -1,0 +1,5 @@
+# Generated artifacts
+output/
+
+# VSCode
+.vscode/
