@@ -106,3 +106,24 @@ man spot
 ```
 
 Next see their [compilation instructions](https://spot.lrde.epita.fr/compile.html), after the installation finished successfully.
+
+
+# Development
+
+This section provides useful details for developing this project.
+
+## Spot documentation
+
+Spot provides doxygen documentation online. [This page](https://spot.lre.epita.fr/doxygen/) lists some handy starting points in the docs, such as functions to parse a string into an LTL formula object.
+
+# Run
+
+This section explains how to run the project. This may be relevant to the evaluation of the project w.r.t. the course.
+
+## Project - Part 1: Setup of the Parser
+
+The first task for the project is setting up a parser that is able to read some input format and display it as a dot format image.
+
+First, to verify that Spot was installed correctly, you can run the [hello script](/scripts/hello.sh). If this script does not result in any compilation errors, and prints to the terminal, then all is well.
+
+After that, you can run the [parser test script](/scripts/parser_test.sh). This uses some input files from the [input directory](/input/) and generates the corresponding dot images in the [output directory](/output/). This should convince you that the project has access to a working parser.
