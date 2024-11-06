@@ -106,4 +106,3 @@ man spot
 ```
 
 Next see their [compilation instructions](https://spot.lrde.epita.fr/compile.html), after the installation finished successfully.
-
