@@ -73,7 +73,7 @@ make
 make install
 ```
 
-# Link Spot during 
+### Link Spot during compilation
 
 Now to try and link the generated libs for our own c++ program.
 To test whether spot was installed correctly, and we can actually link it, we make use of one of the examples spot provides.
@@ -90,7 +90,7 @@ For me this output the following:
     Hello world!
     This is Spot 2.12.1.dev.
 
-### Useful references
+### Useful Spot references
 
 This section details some of the pages and files in the spot documentation that were helpful.
 First of all, [spot's install instructions](https://spot.lre.epita.fr/install.html#Debian).
