@@ -4,6 +4,8 @@ A repo containing projects 1 & 2 for the course Specification and Verification.
 
 The goal is preparing a (HOA) parity game solver for the [SYNTCOMP](https://www.syntcomp.org/) 2025 competition.
 
+This project is a **HOAx**, since despite claiming to implement a parity game solver, it heavily relies on external libraries (Spot) to achieve this. A true computer scientist would reinvent the wheel.
+
 # Dependencies
 
 This sections describes the project's dependencies.
@@ -12,9 +14,7 @@ Any installation instructions will target ubuntu linux, since that was used for 
 
 ## Spot
 
-The c++ library [Spot](https://spot.lre.epita.fr/index.html) implements LTL and $\omega$-automata manipulation. Only select functionality of this library will be used, since we must implement several algorithms and formalisms ourselves. Of use are the following features:
-1) The automaton parser
-2) ltlcross and autcross for benchmarking
+The c++ library [Spot](https://spot.lre.epita.fr/index.html) implements LTL and $\omega$-automata manipulation. Only select functionality of this library will be used, since we must implement several algorithms and formalisms ourselves.
 
 For installation instructions, see [spot's install instructions](https://spot.lre.epita.fr/install.html#Debian) or do the following.
 For compilation instructions, see [spot's compilation instructions](https://spot.lre.epita.fr/compile.html).
