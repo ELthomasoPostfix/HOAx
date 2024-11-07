@@ -80,15 +80,19 @@ To test whether spot was installed correctly, and we can actually link it, we ma
 
 ```sh
 # Compile while linking spot, with a test program.
-g++ -std=c++17 src/spot/hello.cpp -lspot -o output/hello
+g++ tests/test_spot_linkage.cpp -lspot -o output/hello
 # Run the compiled test program.
 ./output/hello
+# Cleanup
+rm output/hello
 ```
 
 For me this output the following:
 
     Hello world!
     This is Spot 2.12.1.dev.
+
+Note that a similar series of steps is part of the testing suite of this project's meson test pipeline. See [this section](#project---part-1-setup-of-the-parser).
 
 ### Useful Spot references
 
