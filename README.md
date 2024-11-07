@@ -4,7 +4,7 @@ A repo containing projects 1 & 2 for the course Specification and Verification.
 
 The goal is preparing a (HOA) parity game solver for the [SYNTCOMP](https://www.syntcomp.org/) 2025 competition.
 
-This project is a **HOAx**, since despite claiming to implement a parity game solver, it heavily relies on external libraries (Spot) to achieve this. A true computer scientist would reinvent the wheel.
+This project is a **hoax**, since despite claiming to implement a parity game solver, it heavily relies on external libraries (Spot) to achieve this. A true computer scientist would reinvent the wheel.
 
 # Dependencies
 
