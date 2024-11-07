@@ -123,7 +123,41 @@ This section explains how to run the project. This may be relevant to the evalua
 ## Project - Part 1: Setup of the Parser
 
 The first task for the project is setting up a parser that is able to read some input format and display it as a dot format image.
+The meson build setup specifies several tests to verify this functionality.
 
-First, to verify that Spot was installed correctly, you can run the [hello script](/scripts/hello.sh). If this script does not result in any compilation errors, and prints to the terminal, then all is well.
+First, [the linkage test](/tests/test_spot_linkage.cpp) verifies that Spot was installed correctly. If this script does not result in any compilation errors, and prints to the terminal, then all is well. The main concern is that you should explicitly link spot when compiling, as follows: `g++ ... -lspot -o ...`. The placement of `-lspot` in this command matters.
 
-After that, you can run the [parser test script](/scripts/parser_test.sh). This uses some input files from the [input directory](/input/) and generates the corresponding dot images in the [output directory](/output/). This should convince you that the project has access to a working parser.
+[The parser API test](/tests/test_spot_parser_api.cpp) shows that the Spot parser API exposes the expected functions. To provide visual indication of this, the test should also take some input file from the [input directory](/input/) and produce the dot image of the corresponding automaton into the [output directory](/output/).
+
+
+# Compilation
+
+The meson build system is used to compile the build targets.
+After cloning the git repo, we must setup meson at the **root of the project**.
+
+```sh
+# The very first time, call without "--wipe"
+meson setup builddir/
+
+# Every time after that, prefer to add "--wipe".
+# This ensures other meson commands display any warnings.
+meson setup builddir/ --wipe
+```
+
+Next, testing is done by invoking the meson test command.
+
+```sh
+# The verbose flag "-v" is only necessary in case of test failures.
+meson test -C builddir/ -v
+```
+
+Lastly, you can compile all build targets at once. The meson build configuration was set up this way to make compilation as straight forward as possible.
+
+```sh
+# Compile.
+meson compile -C builddir/
+# Run entrypoint.
+./builddir/hoax
+```
+
+Each executable resulting from this compilation will appear in the subdirectories of `builddir/`, in a location corresponding to the `meson.build` file that generated that executable.
