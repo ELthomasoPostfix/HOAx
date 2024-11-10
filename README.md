@@ -126,7 +126,13 @@ Spot also provides a [list of examples](https://spot.lre.epita.fr/tut.html) in p
 
 The extended HOA format used for this project was propesed in [this paper](https://arxiv.org/abs/1912.05793). It introduces a `controllable-AP` property in the HOA header section.
 
-Thus, we require Spot to be able to parse and store this information. On Spot's TωA page, the [section on arenas for two player games](https://spot.lre.epita.fr/hoa.html#orgcf37081) gives an example of an automaton that specifies `controllable-AP: 1`.
+Thus, we require Spot to be able to parse and store this information.
+
+**For c++**, just using `spot::parse_aut` for an input file seems to parse the `controllable-AP` property of the input file just fine. The `spot::twa_graph_ptr` member `aut` of the `spot::parsed_aut_ptr` produced by the parsing contains the requisite `"synthesis-outputs"` named property, which is reflective of the `controllable-AP` property. Furthermore, dumping that automaton back out as HOA format shows that the `controllable-AP` prop is conserved (at least when it is part of the HOA file input).
+
+### Spot-related eHOA & (Parity) Games information
+
+On Spot's TωA page, the [section on arenas for two player games](https://spot.lre.epita.fr/hoa.html#orgcf37081) gives an example of an automaton that specifies `controllable-AP: 1`.
 
 To access properties related to games, we may refer to the [named properties section](https://spot.lre.epita.fr/concepts.html#named-properties) of Spot's concepts page. The property `synthesis-outputs` seems to represent `controllable-AP` in this context, and related game properties are `state-winner`, `strategy` and `synthesis-outputs`.
 
@@ -153,8 +159,6 @@ The Spot tutorial [here](https://spot.lre.epita.fr/tut40.html
 ```py
 game = spot.automaton("ltlsynt --ins=a --outs=b -f '!b & GFa <-> Gb' --print-game-hoa |");
 ```
-
-**But, for c++,** just using `spot::parse_aut` for an input file seems to parse the `controllable-AP` property of the input file just fine. The `spot::twa_graph_ptr` member `aut` of the `spot::parsed_aut_ptr` produced by the parsing contains the requisite `"synthesis-outputs"` named property, which is reflective of the `controllable-AP` property. Furthermore, dumping that automaton back out as HOA format shows that the `controllable-AP` prop is conserved.
 
 # Run
 
