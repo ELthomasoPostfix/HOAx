@@ -120,6 +120,42 @@ This section provides useful details for developing this project.
 
 Spot provides doxygen documentation online. [This page](https://spot.lre.epita.fr/doxygen/) lists some handy starting points in the docs, such as functions to parse a string into an LTL formula object.
 
+Spot also provides a [list of examples](https://spot.lre.epita.fr/tut.html) in python and c++.
+
+## eHOA
+
+The extended HOA format used for this project was propesed in [this paper](https://arxiv.org/abs/1912.05793). It introduces a `controllable-AP` property in the HOA header section.
+
+Thus, we require Spot to be able to parse and store this information. On Spot's TωA page, the [section on arenas for two player games](https://spot.lre.epita.fr/hoa.html#orgcf37081) gives an example of an automaton that specifies `controllable-AP: 1`.
+
+To access properties related to games, we may refer to the [named properties section](https://spot.lre.epita.fr/concepts.html#named-properties) of Spot's concepts page. The property `synthesis-outputs` seems to represent `controllable-AP` in this context, and related game properties are `state-winner`, `strategy` and `synthesis-outputs`.
+
+It does not seem like the struct `spot::twa_graph` makes the map of all properties public. So, if you *do* want to see what properties exist on a twa, then you could modify `/usr/local/include/spot/twa/twa.hh` (one of the header files of Spot installed by `make install`) so that the member `named_prop_` is public, by changing line 1081 from `protected:` to `public:`. Then, you can simply loop over the keys of the map.
+
+```cpp
+spot::twa_graph aut = ...;
+std::cout << "Found properties: [";
+// The member "aut->named_prop_" is the named property map containing
+// the properties we are interested in.
+for (const auto& key : aut->named_prop_) {
+    std::cout << key.first << ", ";
+}
+std::cout << "]" << std::endl;
+
+//==> e.g. outputs: "Found properties: [state-names, synthesis-outputs, ]"
+```
+
+The Spot tutorial [here](https://spot.lre.epita.fr/tut40.html
+) gives a c++ code example of solving a parity game using Spot, but it does not explain about the `controllable-AP` property.
+
+[This Spot python example](https://spot.lre.epita.fr/ipynb/games.html) is about games. On a side note, it uses the function `get_state_players`. This appears to also be a function in the c++ interface, accessible via `#include <spot/twaalgos/game.hh>` as `spot::get_state_players`. Of note is the section [Input/Output in HOA format](https://spot.lre.epita.fr/ipynb/games.html#Input/Output-in-HOA-format) where they specify how to read eHOA via the pything bindings:
+
+```py
+game = spot.automaton("ltlsynt --ins=a --outs=b -f '!b & GFa <-> Gb' --print-game-hoa |");
+```
+
+**But, for c++,** just using `spot::parse_aut` for an input file seems to parse the `controllable-AP` property of the input file just fine. The `spot::twa_graph_ptr` member `aut` of the `spot::parsed_aut_ptr` produced by the parsing contains the requisite `"synthesis-outputs"` named property, which is reflective of the `controllable-AP` property. Furthermore, dumping that automaton back out as HOA format shows that the `controllable-AP` prop is conserved.
+
 # Run
 
 This section explains how to run the project. This may be relevant to the evaluation of the project w.r.t. the course.
@@ -131,7 +167,7 @@ The meson build setup specifies several tests to verify this functionality.
 
 First, [the linkage test](/tests/test_spot_linkage.cpp) verifies that Spot was installed correctly. If this script does not result in any compilation errors, and prints to the terminal, then all is well. The main concern is that you should explicitly link spot when compiling, as follows: `g++ ... -lspot -o ...`. The placement of `-lspot` in this command matters.
 
-[The parser API test](/tests/test_spot_parser_api.cpp) shows that the Spot parser API exposes the expected functions. To provide visual indication of this, the test should also take some input file from the [input directory](/input/) and produce the dot image of the corresponding automaton into the [output directory](/output/).
+[The parser API test](/tests/test_spot_parser_api.cpp) shows that the Spot parser API exposes the expected functions. To provide visual indication of this, the test should also take some input file from the [input directory](/input/) and produce the dot image of the corresponding automaton into the [output directory](/output/). It also dumps the HOA of the automaton it parsed. This is to show that the `controllable-AP` property is preserved when an input automaton is specified in eHOA, meaning the input contains `controllable-AP`, since the output HOA file also specifies the original `controllable-AP` property value.
 
 
 # Compilation

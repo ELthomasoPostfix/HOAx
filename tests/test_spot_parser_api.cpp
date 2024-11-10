@@ -1,6 +1,10 @@
 #include <spot/tl/parse.hh>
+#include <spot/tl/formula.hh>
 #include <spot/twa/bdddict.hh>
+#include <spot/twa/twagraph.hh>
+#include <spot/twaalgos/hoa.hh>
 #include <spot/twaalgos/dot.hh>
+#include <spot/twaalgos/game.hh>
 #include <spot/parseaut/public.hh>
 #include <spot/twaalgos/translate.hh>
 #include <iostream>
@@ -32,7 +36,7 @@ int test_ltl(const std::string &dir_in, const std::string &dir_out) {
   if (!dot_of.is_open()) return 1;
 
   spot::print_dot(dot_of, twa_automaton);
-  std::cout << "Generated dot file at: " << path_out << std::endl;
+  std::cout << "Generated dot file at: " << path_out << std::endl << std::endl;
 
   return 0;
 }
@@ -49,7 +53,8 @@ int test_ehoa(const std::string &dir_in, const std::string &dir_out) {
   for(size_t idx = 0; idx < paths_in.size(); ++idx) {
 
     std::string path_in = dir_in + paths_in.at(idx);
-    std::string path_out = dir_out + "/test_spot_parser_ehoa" + std::to_string(idx) + ".dot";
+    std::string path_out_dot = dir_out + "/test_spot_parser_ehoa" + std::to_string(idx) + ".dot";
+    std::string path_out_ehoa = dir_out + "/test_spot_parser_ehoa" + std::to_string(idx) + ".ehoa";
 
     spot::bdd_dict_ptr bdd_dict = spot::make_bdd_dict();
     spot::parsed_aut_ptr aut = nullptr;
@@ -61,12 +66,33 @@ int test_ehoa(const std::string &dir_in, const std::string &dir_out) {
     twa_automaton = aut->aut;
     if (twa_automaton == nullptr) return 1;
 
+    // The "controllable-AP" property is represented by the named property
+    // "synthesis-outputs" defined in this table:
+    //    https://spot.lre.epita.fr/concepts.html#named-properties
+    // Related props are "state-winner", "strategy" and "synthesis-outputs".
+    std::string prop_name = "synthesis-outputs";
+    const spot::bdd_dict *synth_out;
+    synth_out = aut->aut->get_named_prop<spot::bdd_dict>(prop_name);
+
+    // If this prop is not present, then assume the "controllable-AP"
+    // property was not parsed correctly!
+    if (synth_out == nullptr)
+      return 1;
+    else
+      std::cout << "The named prop \"synthesis-outputs\" is found in the TwA. "
+                << "The \"controllable-AP\" prop was likely parsed properly."
+                << std::endl;
+
     // Generate dot images.
-    std::ofstream dot_of(path_out);
+    std::ofstream dot_of(path_out_dot);
     if (!dot_of.is_open()) return 1;
+    std::ofstream ehoa_of(path_out_ehoa);
+    if (!ehoa_of.is_open()) return 1;
 
     spot::print_dot(dot_of, twa_automaton);
-    std::cout << "Generated dot file at: " << path_out << std::endl;
+    std::cout << "Generated dot file at: " << path_out_dot << std::endl;
+    spot::print_hoa(ehoa_of, twa_automaton);
+    std::cout << "Generated dot file at: " << path_out_ehoa << std::endl << std::endl;
   }
 
   return 0;
