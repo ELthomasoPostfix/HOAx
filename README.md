@@ -79,7 +79,7 @@ The c++ library [Spot](https://spot.lre.epita.fr/index.html) implements LTL and 
 For installation instructions, see [spot's official install instructions](https://spot.lre.epita.fr/install.html#tar) or follow the steps below.
 For instructions on how to _"compile and execute a C++ program written using Spot"_, see [spot's official compilation instructions](https://spot.lre.epita.fr/compile.html).
 
-### Install Spot dependencies
+### Install Spot
 
 Let us install spot from the spot 2.12.1 tarball, the most recent available version.
 
@@ -100,7 +100,7 @@ ldconfig -v
 
 ### Link Spot during compilation
 
-Now verify the generated spot libs can be found and linked to the HOAx c++ source code. Some of the examples spot provides for this purpose have been included in the repo as test cases; This project's meson test pipeline covers this. See [this section](#project---part-1-setup-of-the-parser).
+Now verify the generated spot libs can be found and linked to the HOAx source code. Some of the examples spot provides for this purpose have been included in the repo as test cases; This project's meson test pipeline covers this. See [this section](#project---part-1-setup-of-the-parser).
 
 
 For later reference, let us briefly describe the steps to test the linkage manually.
@@ -114,7 +114,7 @@ g++ tests/test_spot_linkage.cpp -lspot -o output/hello
 rm output/hello
 ```
 
-At the time of writing, writes the following to stdout:
+At the time of writing, this writes the following to stdout:
 
     Test proper Spot Linkage!
     This is Spot 2.12.1.
@@ -134,7 +134,7 @@ ltl2tgba --version
 man spot
 ```
 
-Next see their [compilation instructions](https://spot.lrde.epita.fr/compile.html), after the installation finished successfully.
+Next see [their compilation instructions](https://spot.lrde.epita.fr/compile.html), after the installation finished successfully.
 
 
 # Development
