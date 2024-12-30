@@ -32,6 +32,14 @@ meson test -C builddir/ -v
 
 [The parser API test](/tests/test_spot_parser_api.cpp) shows that the Spot parser API exposes the expected functions. To provide visual indication of this, the test should also take some input file from the [input directory](/input/) and produce the dot image of the corresponding automaton into the [output directory](/output/). It also dumps the HOA of the automaton it parsed. This is to show that the `controllable-AP` property is preserved when an input automaton is specified in eHOA, meaning the input contains `controllable-AP`, since the output HOA file also specifies the original `controllable-AP` property value.
 
+## Project - Part 2: Solve parity game realizability.
+
+Deciding **realizability** for a parity game means checking that player 0, Eve, has a winning strategy, which is equivalent with checking that player 1, Adam, does *not* have a winning strategy. This differs from **synthesis**, where you must not only decide realizability, but also output such a winning strategy in AIGER format.
+
+### Implementation details
+
+The basic implementation for solving parity game realizability is **Zielonka's algorithm**. This algorithm was described in the course document "playing games to synthesize reactive systems" in the section "A Divide-and-Conquer Algorithm for Parity Games". Pseudocode for the zielonka algorithm can also be found on the [wikipedia page](https://en.wikipedia.org/wiki/Parity_game#Recursive_algorithm_for_solving_parity_games) of parity games.
+
 
 # Compilation
 
