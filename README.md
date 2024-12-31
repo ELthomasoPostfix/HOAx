@@ -36,6 +36,17 @@ meson test -C builddir/ -v
 
 Deciding **realizability** for a parity game means checking that player 0, Eve, has a winning strategy, which is equivalent with checking that player 1, Adam, does *not* have a winning strategy. This differs from **synthesis**, where you must not only decide realizability, but also output such a winning strategy in AIGER format.
 
+### Run
+
+To run the entrypoint for part two on the entire SYNTCOMP benchmark suite, run the following.
+
+```sh
+./run.sh
+
+# Or a "brief" test of only the mucalc_mc subset of the benchmark
+./run.sh --brief
+```
+
 ### Implementation details
 
 The basic implementation for solving parity game realizability is **Zielonka's algorithm**. This algorithm was described in the course document "playing games to synthesize reactive systems" in the section "A Divide-and-Conquer Algorithm for Parity Games". Pseudocode for the zielonka algorithm can also be found on the [wikipedia page](https://en.wikipedia.org/wiki/Parity_game#Recursive_algorithm_for_solving_parity_games) of parity games.
@@ -170,6 +181,8 @@ On Spot's TωA page, the [section on arenas for two player games](https://spot.l
 
 To access properties related to games, we may refer to the [named properties section](https://spot.lre.epita.fr/concepts.html#named-properties) of Spot's concepts page. The property `synthesis-outputs` seems to represent `controllable-AP` in this context, and related game properties are `state-winner`, `strategy` and `synthesis-outputs`.
 
+To access any of these properties, see `twa::get_named_prop<type>(key)` in the spot [docs](https://spot.lre.epita.fr/doxygen/classspot_1_1twa.html#a38228ffd3a1bcde423b88a738fd86e98). In the SYNTCOMP benchmarks, none of the eHOA files seem to specify `spot-state-player: ...`, so the `"state-player"` named prop is always empty in the parsed automaton. Since we must implement our own synthesis solution, the `"state-winner"` and `"strategy"` named properties are likely also of no use. They encode information about the solution to a parity game, so they are probably set by spot's parity game solver, which we may obviously not call.
+
 It does not seem like the struct `spot::twa_graph` makes the map of all properties public. So, if you *do* want to see what properties exist on a twa, then you could modify `/usr/local/include/spot/twa/twa.hh` (one of the header files of Spot installed by `make install`) so that the member `named_prop_` is public, by changing line 1081 from `protected:` to `public:`. Then, you can simply loop over the keys of the map.
 
 ```cpp
@@ -186,7 +199,7 @@ std::cout << "]" << std::endl;
 ```
 
 The Spot tutorial [here](https://spot.lre.epita.fr/tut40.html
-) gives a c++ code example of solving a parity game using Spot, but it does not explain about the `controllable-AP` property.
+) gives a c++ code example of using Spot's game interface. It does not explicitly explain about the `controllable-AP` property.
 
 [This Spot python example](https://spot.lre.epita.fr/ipynb/games.html) is about games. On a side note, it uses the function `get_state_players`. This appears to also be a function in the c++ interface, accessible via `#include <spot/twaalgos/game.hh>` as `spot::get_state_players`. Of note is the section [Input/Output in HOA format](https://spot.lre.epita.fr/ipynb/games.html#Input/Output-in-HOA-format) where they specify how to read eHOA via the pything bindings:
 

@@ -14,6 +14,7 @@ subdir('tests')
 
 # Build project's entry point executable.
 hoax_ex = executable('hoax', files(
-  'src/main.cpp',
-  'src/hoax.cpp'
-))
+    'src/main.cpp',
+    'src/hoax.cpp'
+  ),
+  link_args : LSPOT_LINK_ARGS)

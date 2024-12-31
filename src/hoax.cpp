@@ -1,5 +1,5 @@
 #include "hoax.h"
 
-void zielonka() {
-    return;
+bool zielonka() {
+    return false;
 }
