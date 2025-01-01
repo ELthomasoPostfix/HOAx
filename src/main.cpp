@@ -90,7 +90,17 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    if (zielonka())
+    std::set<int> W1 = {};
+    std::set<int> W2 = {};
+    std::vector<int> vertices = {};
+    std::vector<int> vertices_even = {};
+    std::vector<int> edges = {};
+    auto priority_fun = [](int vertex) -> int {
+      return vertex;
+    };
+
+    zielonka(&W1, &W2, &vertices, &vertices_even, &edges, priority_fun);
+    if (false)
       printf ("REAL\t%s\n", path_in);
     else
       printf ("UNREAL\t%s\n", path_in);
