@@ -1,6 +1,12 @@
 # meson setup builddir/ --wipe
 meson compile -C builddir/
 
+# Quit if compilation failed!
+if [ $? -ne 0 ]; then
+    echo "HOAx: Failed compilation, exit ..."
+    exit 1
+fi
+
 # The "brief" arg is used to run the smallest benchmark subdir, for testing.
 if [[ $* == *--brief* ]]
 then
