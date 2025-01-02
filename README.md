@@ -6,6 +6,8 @@ The goal is preparing a (HOA) parity game solver for the [SYNTCOMP](https://www.
 
 This project is a **hoax**, since despite claiming to implement a parity game solver, it heavily relies on external libraries (Spot) to achieve this. A true computer scientist would reinvent the wheel.
 
+A basic parity game solver consists of implementing zielonka's recursive algorithm. Note that spot has an [implementation](https://spot.lre.epita.fr/doxygen/group__games.html#ga5282822f1079cdefc43a1d1b0c83a024) of zielonka's algorithm as well, but, of course, we should **not** call it nor copy its code; we are to implement the algorithm ourselves.
+
 For more details on the use of spot in this project, see [the dependencies section](#dependencies).
 
 
