@@ -4,7 +4,7 @@ project('HOAx', 'cpp',
 )
 
 # Define constants
-LSPOT_LINK_ARGS = ['-std=c++17', '-lspot']
+LSPOT_LINK_ARGS = ['-Wl,--copy-dt-needed-entries', '-std=c++17', '-lspot']
 DIR_ROOT = meson.current_source_dir()
 DIR_IN  = join_paths(DIR_ROOT, 'input')
 DIR_OUT = join_paths(DIR_ROOT, 'output')
