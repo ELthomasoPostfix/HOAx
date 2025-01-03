@@ -27,7 +27,7 @@ jobs:
     # Now compile and run the entrypoint for a "--brief"
     # subset of the eHOA parity game benchmarks
     - run: meson compile -C builddir/
-    - run: ./run --brief
+    - run: ./run.sh --brief
     # Upload the meson test logs as an artifact.
     - uses: actions/upload-artifact@v4
       if: failure()

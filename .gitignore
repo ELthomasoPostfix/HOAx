@@ -6,3 +6,9 @@ output/
 
 # Meson build system
 builddir/
+
+# Input files must always be explicitly added
+input/
+
+# Output artifacts should never be added
+output/
