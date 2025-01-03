@@ -15,7 +15,7 @@ jobs:
     - uses: actions/checkout@v4
     # Install spot Debian packages, see:
     #   https://spot.lre.epita.fr/install.html#Debian
-    - run: sudo wget -q -O - https://www.lrde.epita.fr/repo/debian.gpg | apt-key add -
+    - run: sudo wget -q -O - https://www.lrde.epita.fr/repo/debian.gpg | sudo apt-key add -
     - run: sudo echo 'deb http://www.lrde.epita.fr/repo/debian/ stable/' >> /etc/apt/sources.list
     - run: sudo apt-get update
     - run: sudo apt-get install libspot-dev
