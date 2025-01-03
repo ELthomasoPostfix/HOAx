@@ -1,8 +1,8 @@
 # HOAx
 
-A repo containing projects 1 & 2 for the course Specification and Verification.
+A repo containing the project for the course Specification and Verification.
 
-The goal is preparing a (HOA) parity game solver for the [SYNTCOMP](https://www.syntcomp.org/) 2025 competition.
+The goal is preparing a (eHOA) parity game solver for the [SYNTCOMP](https://www.syntcomp.org/) 2025 competition.
 
 This project is a **hoax**, since despite claiming to implement a parity game solver, it heavily relies on external libraries (Spot) to achieve this. A true computer scientist would reinvent the wheel.
 
@@ -14,6 +14,8 @@ For more details on the use of spot in this project, see [the dependencies secti
 # Run
 
 This section explains how to run the project. This may be relevant to the evaluation of the project w.r.t. the course.
+
+**Alternatively, see the github actions [workflow yml](/.github/workflows/meson-actions.yml) for an ubuntu linux example of setting up and running the project.**
 
 ## Project - Setup
 
