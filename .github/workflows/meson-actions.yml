@@ -1,0 +1,36 @@
+name: ci_meson
+
+on:
+  # Allows manual triggering of this workflow
+  workflow_dispatch:
+  # When some code/source file is changed, run the workflow.
+  push:
+    paths:
+      - "**.cpp"
+      - "**.h"
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    # Install spot Debian packages, see:
+    #   https://spot.lre.epita.fr/install.html#Debian
+    - run: wget -q -O - https://www.lrde.epita.fr/repo/debian.gpg | apt-key add -
+    - run: echo 'deb http://www.lrde.epita.fr/repo/debian/ stable/' >> /etc/apt/sources.list
+    - run: sudo apt-get update
+    - run: sudo apt-get install libspot-dev
+    # Now verify that the meson commands work.
+    - run: meson setup builddir/
+      env:
+        CC: g++
+    - run: meson test -C builddir/ -v
+    # Now compile and run the entrypoint for a "--brief"
+    # subset of the eHOA parity game benchmarks
+    - run: meson compile -C builddir/
+    - run: ./run --brief
+    # Upload the meson test logs as an artifact.
+    - uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: Linux_Meson_Testlog
+        path: builddir/meson-logs/testlog.txt
