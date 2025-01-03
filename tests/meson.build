@@ -10,3 +10,10 @@ test_ex = executable('spot_parser_api',
 )
 test('Test the availability of the Spot parser API.', test_ex,
     args:[DIR_IN, DIR_OUT])
+
+test_ex = executable('spot_bdd_api',
+    'test_spot_bdd_api.cpp',
+    link_args : LSPOT_LINK_ARGS,
+)
+test('Test the availability of the Spot bdd API.', test_ex,
+    args:[DIR_IN, DIR_OUT])
