@@ -9,7 +9,7 @@
  * bdd manipulation. This serves as documentation and a reference point
  * for the implementation of zielonka that follows later.
  */
-int test_vars_to_bdd(const std::string &dir_in, const std::string &dir_out) {
+int test_vars_to_bdd(const std::string &dir_in) {
   std::string path_in = dir_in + "/hoa_benchmarks/toy_example_1.ehoa";
 
   spot::parsed_aut_ptr pa = spot::parse_aut(path_in, spot::make_bdd_dict());
@@ -146,8 +146,8 @@ int test_vars_to_bdd(const std::string &dir_in, const std::string &dir_out) {
   // a | (!a & b)    can be satisfied by:
   //    a=true, b=don't care    OR
   //    a=false, b=true
-  bdd FT = !bdd0 & bdd1;  // a=false, b=true
-  assert(bdd_satone((bdd0 | (!bdd0 & bdd1))) == FT);
+  bdd FT = (!bdd0) & bdd1;  // a=false, b=true
+  assert(bdd_satone((bdd0 | ((!bdd0) & bdd1))) == FT);
 
   // a & b    is satisfied by    a=true, b=true, c=don't care
   // ==> `bdd_fullsatone()` requires all variables to have a valuation.
@@ -158,20 +158,19 @@ int test_vars_to_bdd(const std::string &dir_in, const std::string &dir_out) {
   //    a=true, b=don't care, c=don't care    OR
   //    a=false, b=true, c=don't care
   // ==> `bdd_fullsatone()` requires all variables to have a valuation.
-  bdd FTF = !bdd0 & bdd1 & !bdd2;  // a=false, b=true, c=false
-  assert(bdd_fullsatone((bdd0 | (!bdd0 & bdd1))) == FTF);
+  bdd FTF = (!bdd0) & bdd1 & !bdd2;  // a=false, b=true, c=false
+  assert(bdd_fullsatone((bdd0 | ((!bdd0) & bdd1))) == FTF);
 
   return 0;
 }
 
 int main(int argc, char *argv[])
 {
-  assert(argc == 3);  // Require the input & output paths.
+  assert(argc >= 2);  // Require the input & output paths.
   std::string dir_in  = argv[1];
-  std::string dir_out = argv[2];
   int ret = 0;
 
-  ret = test_vars_to_bdd(dir_in, dir_out);
+  ret = test_vars_to_bdd(dir_in);
   if (ret) return ret;
 
   return 0;
