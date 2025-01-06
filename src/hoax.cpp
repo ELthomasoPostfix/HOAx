@@ -18,8 +18,6 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
 
     /* All of the states in the automaton belong to the odd player. */
     for (unsigned int state = 0; state < aut->num_states(); state++) {
-        std::cout << state << std::endl;
-
         /* Collect all distinct variables of the out edges as a conjunction. */
         bdd outvars = bddtrue;
         for (auto &edge : aut->out(state))
@@ -28,7 +26,7 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
         bdd unc_uvars = bdd_restrict(outvars, controllable);
 
         int *indexes = nullptr;
-        int size;
+        unsigned int size;
         bdd_var_indexes(unc_uvars, &indexes, &size);
 
         /* Generate all possible evaluations of the uncontrollable vars.
@@ -41,53 +39,53 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
             111  =>  a & b & c
         */
         for (int eval_nr = 0; eval_nr < std::pow(2, size); eval_nr++) {
-        bdd eval = bddtrue;
-        for (int shift = 0; shift < size; shift++) {
-            bdd var = bdd_ithvar(indexes[shift]);
-            if ((eval_nr & (1 << shift)) == 0)
-            eval &= !var;
-            else
-            eval &= var;
-        }
+            bdd eval = bddtrue;
+            for (unsigned int shift = 0; indexes && (shift < size); shift++) {
+                bdd var = bdd_ithvar(indexes[shift]);
+                if ((eval_nr & (1 << shift)) == 0)
+                    eval &= !var;
+                else
+                    eval &= var;
+            }
 
+            std::vector<spot::twa_graph::edge_storage_t*> destinations;
+            for (auto &edge : aut->out(state)) {
+                /* If the edge is still satisfiable after the odd player chooses
+                a uncontrollable var evaluation, then it induces a new edge.
+                i.e. the even player can still make a move.
+                */
+                if (bdd_satone(bdd_restrict(edge.cond, eval)) != bddfalse) {
+                destinations.push_back(&edge);
+                }
+            }
 
-        std::vector<spot::twa_graph::edge_storage_t*> destinations;
-        for (auto &edge : aut->out(state)) {
-            /* If the edge is still satisfiable after the odd player chooses
-            a uncontrollable var evaluation, then it induces a new edge.
-            i.e. the even player can still make a move.
+            /* The eval of the uncontrollable variables results in none of the
+                out transitions having a satisfiable condition. */
+            if (destinations.size() == 0)
+                continue;
+
+            const unsigned int intermediate = this->exp->new_state();
+            unsigned int edge_id = this->exp->new_acc_edge(state, intermediate, eval);
+            /* The intermediary transition does not belong to any accepting set. */
+            assert(this->exp->edge_storage(edge_id).acc.count() == 0);
+
+            /* For each out edge of the original state, that is still satisfiable
+                given the eval of the uncontrollable vars, add an out edge to the
+                intermediary state.
+
+                Spot makes the distinction between transitions (labeled with
+                a single AP) and edges (labeled with an entire propositional
+                formula):
+                    https://spot.lre.epita.fr/concepts.html#trans-edge
+                So, use `new_edge(...)` instead of `new_transition(...)`?
             */
-            if (bdd_satone(bdd_restrict(edge.cond, eval)) != bddfalse) {
-            destinations.push_back(&edge);
+            for (auto edge : destinations) {
+                bdd cond = bdd_restrict(edge->cond, eval);
+                edge_id = this->exp->new_acc_edge(intermediate, edge->dst, cond);
+                this->exp->edge_storage(edge_id).acc = edge->acc;
             }
         }
-
-        /* The eval of the uncontrollable variables results in none of the
-            out transitions having a satisfiable condition. */
-        if (destinations.size() == 0)
-            continue;
-
-        const unsigned int intermediate = this->exp->new_state();
-        unsigned int edge_id = this->exp->new_acc_edge(state, intermediate, eval);
-        /* The intermediary transition does not belong to any accepting set. */
-        assert(this->exp->edge_storage(edge_id).acc.count() == 0);
-
-        /* For each out edge of the original state, that is still satisfiable
-            given the eval of the uncontrollable vars, add an out edge to the
-            intermediary state.
-
-            Spot makes the distinction between transitions (labeled with
-            a single AP) and edges (labeled with an entire propositional
-            formula):
-                https://spot.lre.epita.fr/concepts.html#trans-edge
-            So, use `new_edge(...)` instead of `new_transition(...)`?
-        */
-        for (auto edge : destinations) {
-            bdd cond = bdd_restrict(edge->cond, eval);
-            edge_id = this->exp->new_acc_edge(intermediate, edge->dst, cond);
-            this->exp->edge_storage(edge_id).acc = edge->acc;
-        }
-        }
+        free(indexes);
     }
 }
 
