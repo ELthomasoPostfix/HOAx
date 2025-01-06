@@ -27,8 +27,8 @@ bdd bdd_variables_(const bdd &r, const bool var_should_appear) {
 
     /* Use a boolean rule: T & a = a */
     bdd conjunction = bddtrue;
-    for (size_t i = 0; i < bdd_varnum(); i++) {
-        bool var_appears = (*(vprof + i) > 0);
+    for (int i = 0; i < bdd_varnum(); i++) {
+        bool var_appears = vprof[i] > 0;
         if (var_appears == var_should_appear)
             conjunction &= bdd_ithvar(i);
     }
@@ -37,19 +37,26 @@ bdd bdd_variables_(const bdd &r, const bool var_should_appear) {
     return conjunction;
 }
 
-void bdd_var_indexes(const bdd &r, int **indexes, int *size) {
+void bdd_var_indexes(const bdd &r, int **indexes, unsigned int *size) {
+    /* Can only pass up the assigned array if the pointer is valid. */
+    assert(indexes != nullptr);
+    assert(size != nullptr);
+
     int *vprof = bdd_varprofile(r);
 
     /* First pass: find out how many variables appear. */
-    size_t count = 0;
+    unsigned int count = 0;
     for (int i = 0; i < bdd_varnum(); i++)
-        count += (*(vprof + i) > 0);
+        count += vprof[i] > 0;
+
+    *size = count;
+    /* Prevent memory allocation if there are no variables. */
+    if (count == 0) return;
+    *indexes = new int[count];
 
     /* Second pass: fill the array. */
-    *size = count;
-    *indexes = new int[count];
     for (int i = 0; i < bdd_varnum(); i++)
-        if (*(vprof + i) > 0)
+        if (vprof[i] > 0)
             **indexes = i;
 
     if (vprof) free(vprof);    // spot does not free this mem.
