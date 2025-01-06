@@ -1,5 +1,107 @@
 #include "hoax.h"
 
+HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
+    assert(aut != nullptr);
+    assert(this->exp == nullptr);
+    assert(this->src == nullptr);
+    this->src = aut;
+    this->exp = spot::make_twa_graph(aut->get_dict());
+
+    /* In a spot/HOA TwA every state corresponds to an integer state "index".
+        Preallocate one new state for every existing state. This ensures there is
+        a 1 to 1 mapping from old TwA integer state and new TwA integer state. */
+    assert(this->exp->num_states() == 0);
+    this->exp->new_states(aut->num_states());
+
+    bdd controllable = spot::get_synthesis_outputs(aut);
+    bdd uncontrollable = bdd_variablescomp(controllable);
+
+    /* All of the states in the automaton belong to the odd player. */
+    for (unsigned int state = 0; state < aut->num_states(); state++) {
+        std::cout << state << std::endl;
+
+        /* Collect all distinct variables of the out edges as a conjunction. */
+        bdd outvars = bddtrue;
+        for (auto &edge : aut->out(state))
+        outvars &= bdd_variables(edge.cond);
+        /* Determine the uncontrollable out variables as a conjunction. */
+        bdd unc_uvars = bdd_restrict(outvars, controllable);
+
+        int *indexes = nullptr;
+        int size;
+        bdd_var_indexes(unc_uvars, &indexes, &size);
+
+        /* Generate all possible evaluations of the uncontrollable vars.
+        Every integer in [0, 2^k] for k uncontrollable variables
+        maps to a single evaluation of those variables, based on the
+        binary representation of that integer. e.g.
+            000  =>  !a & !b & !c
+            001  =>  !a & !b & c
+            ...
+            111  =>  a & b & c
+        */
+        for (int eval_nr = 0; eval_nr < std::pow(2, size); eval_nr++) {
+        bdd eval = bddtrue;
+        for (int shift = 0; shift < size; shift++) {
+            bdd var = bdd_ithvar(indexes[shift]);
+            if ((eval_nr & (1 << shift)) == 0)
+            eval &= !var;
+            else
+            eval &= var;
+        }
+
+
+        std::vector<spot::twa_graph::edge_storage_t*> destinations;
+        for (auto &edge : aut->out(state)) {
+            /* If the edge is still satisfiable after the odd player chooses
+            a uncontrollable var evaluation, then it induces a new edge.
+            i.e. the even player can still make a move.
+            */
+            if (bdd_satone(bdd_restrict(edge.cond, eval)) != bddfalse) {
+            destinations.push_back(&edge);
+            }
+        }
+
+        /* The eval of the uncontrollable variables results in none of the
+            out transitions having a satisfiable condition. */
+        if (destinations.size() == 0)
+            continue;
+
+        const unsigned int intermediate = this->exp->new_state();
+        unsigned int edge_id = this->exp->new_acc_edge(state, intermediate, eval);
+        /* The intermediary transition does not belong to any accepting set. */
+        assert(this->exp->edge_storage(edge_id).acc.count() == 0);
+
+        /* For each out edge of the original state, that is still satisfiable
+            given the eval of the uncontrollable vars, add an out edge to the
+            intermediary state.
+
+            Spot makes the distinction between transitions (labeled with
+            a single AP) and edges (labeled with an entire propositional
+            formula):
+                https://spot.lre.epita.fr/concepts.html#trans-edge
+            So, use `new_edge(...)` instead of `new_transition(...)`?
+        */
+        for (auto edge : destinations) {
+            bdd cond = bdd_restrict(edge->cond, eval);
+            edge_id = this->exp->new_acc_edge(intermediate, edge->dst, cond);
+            this->exp->edge_storage(edge_id).acc = edge->acc;
+        }
+        }
+    }
+}
+
+void HOAxParityTwA::set_state_names() {
+    auto names = this->exp->get_or_set_named_prop<std::vector<std::string>>("state-names");
+    names->resize(this->exp->num_states());
+    const unsigned int src_size = this->src->num_states();
+    const unsigned int aut_size = this->exp->num_states();
+    for (unsigned int i = 0; i < src_size; i++)
+        (*names)[i] = ("A" + std::to_string(i));
+    for (unsigned int i = src_size; i < aut_size; i++)
+        (*names)[i] = ("E" + std::to_string(i));
+}
+
 void zielonka(
     std::set<int> *W0,
     std::set<int> *W1,
@@ -123,7 +225,7 @@ void attractor(
     //       and possibly quit early?
     //   ==> Implement the attractors with a while loop instead of recursion!
     // TODO: Check that fixpoint check actually works.
-    if (attr_rec.size() == aut->num_states()) {
+    if (attr_rec.size() == (vertices_even->size() + vertices_odd->size())) {
         *attr = std::move(*T);
         return;
     }
@@ -181,11 +283,15 @@ unsigned int priority(const spot::acc_cond::mark_t &mark, const bool parity_max)
 
 unsigned int priority(const spot::twa_graph_ptr aut, const unsigned int state, const bool parity_max) {
     unsigned int p = parity_max ? 0 : UINT_MAX;
+    bool edges_empty = true;
     for (auto &edge : aut->out(state)) {
+        edges_empty = false;
         if (parity_max)
             p = std::max(p, priority(edge.acc, parity_max));
         else
             p = std::min(p, priority(edge.acc, parity_max));
     }
+    /* Sink nodes, vertices with no outgoing edges, are not allowed! */
+    assert(!edges_empty);
     return p;
 }

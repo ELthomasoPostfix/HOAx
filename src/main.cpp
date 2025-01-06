@@ -3,6 +3,7 @@
 #include <iostream>
 #include <getopt.h>
 #include <fstream>
+#include <cmath>
 #include <filesystem>
 #include <spot/parseaut/public.hh>
 #include <spot/twaalgos/dot.hh>
@@ -92,7 +93,7 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    /* The "synthesis-outputs" prop is set by the "Controllable AP" eHOA header.
+    /* The "synthesis-outputs" prop is set by the "controllable-AP" eHOA header.
       The type of this named prop is `bdd`, NOT `spot::bdd_dict`!
       That typing mistake cost me hours of debugging ... curse you, inheritance!
 
@@ -160,28 +161,12 @@ int main(int argc, char *argv[]) {
 
 
 
-    // TODO: Expand each edge formula into separate transitions with as
-    //       label one of the valuations of that formula?
-    /* Note: Spot makes the distinction between transitions (labeled with
-       a single AP) and edges (labeled with an entire propositional
-       formula):
-          https://spot.lre.epita.fr/concepts.html#trans-edge
-       So, use `new_edge(...)` instead of `new_transition(...)`?
-    */
-
-
-
     // TODO: For Buchi automata, annotate any transition without acceptance set
     //       with odd parity/acceptance set 1? Because we want to solve for
     //       parity even, so all transitions/states already annotated correspond
     //       with even/0 parity? Or just re-read the mail of Guillermo.
 
 
-
-    /* See the spot parser for a practical example of constructing a bdd
-      for given variable valuations:
-          https://gitlab.lre.epita.fr/spot/spot/-/blob/next/spot/parseaut/parseaut.yy#L441
-    */
 
     /* TODO: Move these references to the func docs of zielonka() ????
 
@@ -190,35 +175,19 @@ int main(int argc, char *argv[]) {
           https://gitlab.lre.epita.fr/spot/spot/-/blob/next/buddy/src/bddop.c#L2212
      */
 
-
-
-    // std::cout << "heyo: " << *synth_out << std::endl;
-    // std::cout << "heyo: " << std::min(1, 2) << std::endl;
-
-    // std::set<HOAxState> test_set_h;
-    // test_set_h.insert(std::make_pair(1, bddfalse));
-    // test_set_h.insert(std::make_pair(1, bddtrue));
-    // test_set_h.insert(std::make_pair(2, bddtrue));
-    // test_set_h.insert(std::make_pair(2, bddfalse));
-
-    // std::cout << (bddtrue < bddfalse) << std::endl;
-
-    // std::cout << "heyo: ";
-    // for (auto &e : test_set_h)
-    //   std::cout << e << ", ";
-    // std::cout << std::endl;
+    HOAxParityTwA hptwa = HOAxParityTwA(aut);
+    hptwa.set_state_names();
+    spot::twa_graph_ptr expanded = hptwa.exp;
 
 
 
-    // std::set<std::pair<int, int>> test_set;
-    // test_set.insert(std::make_pair(1, 1));
-    // test_set.insert(std::make_pair(1, 2));
-    // test_set.insert(std::make_pair(2, 1));
-    // test_set.insert(std::make_pair(2, 2));
-    // std::cout << "heyo: ";
-    // for (auto &e : test_set)
-    //   std::cout << "{" << e.first << ", " << e.second << "}" << ", ";
-    // std::cout << std::endl;
+    // TODO: DELETE \/ DELETE \/ DELETE \/ DELETE \/
+    std::string path_out_dot_2 = "output/" + std::filesystem::path(path_in).filename().string() + "_EXP.dot";
+    std::ofstream dot_of_2(path_out_dot_2);
+    if (!dot_of_2.is_open()) return 1;
+    spot::print_dot(dot_of_2, expanded, "t");
+    std::cout << "Generated dot file at: " << path_out_dot_2 << std::endl;
+    // TODO: DELETE /\ DELETE /\ DELETE /\ DELETE /\ 
 
 
 
