@@ -26,7 +26,7 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
         bdd unc_uvars = bdd_restrict(outvars, controllable);
 
         int *indexes = nullptr;
-        unsigned int size;
+        unsigned int size = 0;
         bdd_var_indexes(unc_uvars, &indexes, &size);
 
         /* Generate all possible evaluations of the uncontrollable vars.
@@ -85,7 +85,7 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
                 this->exp->edge_storage(edge_id).acc = edge->acc;
             }
         }
-        free(indexes);
+        if (indexes) free(indexes);
     }
 }
 

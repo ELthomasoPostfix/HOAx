@@ -55,9 +55,9 @@ void bdd_var_indexes(const bdd &r, int **indexes, unsigned int *size) {
     *indexes = new int[count];
 
     /* Second pass: fill the array. */
-    for (int i = 0; i < bdd_varnum(); i++)
+    for (int i = bdd_varnum() - 1; i >= 0; i--)
         if (vprof[i] > 0)
-            **indexes = i;
+            (*indexes)[--count] = i;
 
     if (vprof) free(vprof);    // spot does not free this mem.
 }
