@@ -7,7 +7,6 @@
 #include <filesystem>
 #include <spot/parseaut/public.hh>
 #include <spot/twaalgos/dot.hh>
-#include <spot/twaalgos/game.hh>
 
 /* Flag set by "--verbose" */
 static int flag_verbose = 0;
@@ -175,8 +174,11 @@ int main(int argc, char *argv[]) {
           https://gitlab.lre.epita.fr/spot/spot/-/blob/next/buddy/src/bddop.c#L2212
      */
 
+    std::cout << "(a)" << std::endl;
     HOAxParityTwA hptwa = HOAxParityTwA(aut);
+    std::cout << "(b)" << std::endl;
     hptwa.set_state_names();
+    std::cout << "(c)" << std::endl;
     spot::twa_graph_ptr expanded = hptwa.exp;
 
 
@@ -193,10 +195,10 @@ int main(int argc, char *argv[]) {
 
     std::set<int> W1 = {};
     std::set<int> W2 = {};
-    std::set<int> vertices = {};
-    std::set<int> vertices_even = {};
+    std::set<int> vertices = hptwa.get_all_states();
+    std::set<int> vertices_even = hptwa.get_even_states();
 
-    zielonka(&W1, &W2, &vertices, &vertices_even, aut, pmax);
+    zielonka(&W1, &W2, &vertices, &vertices_even, expanded, pmax);
 
     // The initial/start state.
     unsigned int sI = aut->get_init_state_number();

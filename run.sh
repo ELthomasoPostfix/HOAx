@@ -14,7 +14,12 @@ fi
 # The "--brief" arg is used to run the smallest benchmark subdir, for testing.
 if [[ $* == *--brief* ]]
 then
-    ./builddir/hoax -v input/parity/parity/mucalc_mc/*.ehoa
+    # ./builddir/hoax -v input/parity/parity/mucalc_mc/*.ehoa
+
+    FILE="toy_example_2.ehoa"
+    ./builddir/hoax "input/hoa_benchmarks/$FILE"
+    dot -Tpng "output/$FILE.dot" > "output/$FILE.png"
+    dot -Tpng "output/${FILE}_EXP.dot" > "output/${FILE}_EXT.png"
 else
     ./builddir/hoax -v input/parity/parity/keiren/*.ehoa
     ./builddir/hoax -v input/parity/parity/mucalc_mc/*.ehoa

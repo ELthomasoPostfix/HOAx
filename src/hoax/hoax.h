@@ -45,6 +45,19 @@ public:
 
     /** Overwrite the "state-names" named spot prop of the parity arena. */
     void set_state_names();
+
+    /* Get the set of all state numbers. */
+    std::set<int> get_all_states() const;
+
+    /* Get the set of state numbers for "even player states". */
+    std::set<int> get_even_states() const;
+
+    /* Get the set of state numbers for "odd player states". */
+    std::set<int> get_odd_states() const;
+
+private:
+    /* Get the set of state numbers for "odd player states". */
+    std::set<int> set_range() const;
 };
 
 /** Zielonka's algorithm for solving a parity game.

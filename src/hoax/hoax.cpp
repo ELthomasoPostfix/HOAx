@@ -100,6 +100,27 @@ void HOAxParityTwA::set_state_names() {
         (*names)[i] = ("E" + std::to_string(i));
 }
 
+std::set<int> HOAxParityTwA::get_all_states() const {
+    std::set<int> states;
+    for (unsigned int i = 0; i < this->exp->num_states(); i++)
+        states.insert(i);
+    return states;
+}
+
+std::set<int> HOAxParityTwA::get_even_states() const {
+    std::set<int> states;
+    for (unsigned int i = this->src->num_states(); i < this->exp->num_states(); i++)
+        states.insert(i);
+    return states;
+}
+
+std::set<int> HOAxParityTwA::get_odd_states() const {
+    std::set<int> states;
+    for (unsigned int i = 0; i < this->src->num_states(); i++)
+        states.insert(i);
+    return states;
+}
+
 void zielonka(
     std::set<int> *W0,
     std::set<int> *W1,
@@ -107,6 +128,10 @@ void zielonka(
     const std::set<int> *vertices_even,
     const spot::twa_graph_ptr aut,
     const bool parity_max) {
+
+    std::cout << "Zielonka" << std::endl; // TODO: DELETE!!!!
+    std::cout << "A = " << *vertices << std::endl; // TODO: DELETE!!!!
+    std::cout << "E = " << *vertices_even << std::endl; // TODO: DELETE!!!!
 
     // TODO: The zielonka algorithm is state-based, but the eHOA benchmarks
     //       are exclusively transition-based!
@@ -116,27 +141,36 @@ void zielonka(
     assert(W0->empty());
     assert(W1->empty());
 
-    // Base case: no more vertices remain to be checked.
-    if (vertices->empty())
+    /* Base case: no more vertices remain to be checked. */
+    if (vertices_even->empty()) {
+        /* Any odd vertices not assigned to a winnable set by now are
+          "odd player" vertices with no outgoing edges, i.e. sink nodes.
+          We assumed no sink nodes existed! */
+        assert(vertices->empty());
         return;
+    }
 
 
     /* (1) Support a player based on the extremum priority's parity. */
     // The min/max priority, depending on the parity condition.
-    unsigned int m = parity_max ? INT_MIN : INT_MAX;
-    for (int vertex : *vertices) {
+    unsigned int m = parity_max ? 0 : INT_MAX;
+    for (int vertex : *vertices_even) {
         m = parity_max ? std::max(m, priority(aut, vertex, parity_max)) :
                          std::min(m, priority(aut, vertex, parity_max));
     }
     // The player to support.
     const int player = m % 2;
 
+    std::cout << "m = " << m << " | player = " << player << std::endl; // TODO: DELETE!!!!
+
     // The vertices matching the extremum priority.
     std::set<int> M;
-    for (int vertex : *vertices) {
+    for (int vertex : *vertices_even) {
         if (priority(aut, vertex, parity_max) == m)
             M.insert(vertex);
     }
+
+    std::cout << "M = " << M << std::endl; // TODO: DELETE!!!!
 
     // All remaining odd/Adam vertices.
     std::set<int> vertices_odd;
@@ -157,17 +191,15 @@ void zielonka(
     std::set<int> Wprev_p1 = {};  // W'_(i-1)
 
     {
-        std::set<int> vertices_rem = {}; // TODO: Compute (G \ R) properly!!!!!!!!!!!!!!!!!!!!!!!!!
-        std::set<int> vertices_even_rem = {};    // TODO: Compute (G \ R) properly!!!!!!!!!!!!!!!!!!!!!!!!!
+        // Recursively solve for (G \ R)
+        std::set<int> vertices_rem = *vertices - R;
+        std::set<int> vertices_even_rem = *vertices_even - R;
         zielonka(&Wcurr_p1, &Wprev_p1, &vertices_rem, &vertices_even_rem, aut, parity_max);
     }
 
     if (Wprev_p1.empty()) {
         // W_i = W'_i U R
-        std::set_union(
-            Wcurr_p1.begin(), Wcurr_p1.end(),
-            R.begin(), R.end(),
-            std::inserter(*Wcurr_p0, Wcurr_p0->end()));
+        *Wcurr_p0 = Wcurr_p1 + R;
         // W_(i-1) = emptyset
         assert(Wprev_p0->empty());
     } else {
@@ -180,18 +212,16 @@ void zielonka(
         std::set<int> Wprev_p2 = {};  // W''_(i-1)
 
         {
-            std::set<int> vertices_rem = {}; // TODO: Compute (G \ S) properly!!!!!!!!!!!!!!!!!!!!!!!!!
-            std::set<int> vertices_even_rem = {};    // TODO: Compute (G \ S) properly!!!!!!!!!!!!!!!!!!!!!!!!!
+            // Recursively solve for (G \ S)
+            std::set<int> vertices_rem = *vertices - S;
+            std::set<int> vertices_even_rem = *vertices_even - S;
             zielonka(&Wcurr_p2, &Wprev_p2, &vertices_rem, &vertices_even_rem, aut, parity_max);
         }
 
         // W_i = W''_i
         *Wcurr_p0 = std::move(Wcurr_p2);
         // W_(i-1) = W''_(i-1) U S
-        std::set_union(
-            Wprev_p2.begin(), Wprev_p2.end(),
-            S.begin(), S.end(),
-            std::inserter(*Wprev_p0, Wprev_p0->end()));
+        *Wprev_p0 = Wprev_p2 + S;
     }
 }
 
