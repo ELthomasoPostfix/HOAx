@@ -20,8 +20,8 @@ bool operator<(const HOAxState &s1, const HOAxState &s2);
 
     Defaults to `bddtrue` if no variables are used.
 
-    For example, given 5 variables: a, b, c, d, e
-        a | (e & c) | !a    ==>    a & c & e
+    For example, given 5 variables `a, b, c, d, e` the expression
+    `a | (e & !c)` results in `a & c & e`.
 
     @param[in] r The bdd to examine
     @return The conjunction bdd
@@ -32,8 +32,8 @@ bdd bdd_variables(const bdd &r);
 
     Defaults to `bddtrue` if all variables are used.
 
-    For example, given 5 variables: a, b, c, d, e
-        a | (e & c) | !a    ==>    b & d
+    For example, given 5 variables `a, b, c, d, e` the expression
+    `a | (e & !c)` results in `b & d`.
 
     @param[in] r The bdd to examine
     @return The conjunction bdd
