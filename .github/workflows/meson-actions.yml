@@ -19,18 +19,17 @@ jobs:
     - run: echo 'deb http://www.lrde.epita.fr/repo/debian/ stable/' | sudo tee -a /etc/apt/sources.list
     - run: sudo apt-get update
     - run: sudo apt-get install libspot-dev meson
-    # Now verify that the meson commands work.
-    - run: meson setup builddir/
+    # Now run the build script. This runs the meson
+    # 'setup', 'test' and 'compile' commands in that order.
+    - run: ./build.sh
       env:
         CC: g++
-    - run: meson test -C builddir/ -v
-    # Now compile and run the entrypoint for a "--brief"
-    # subset of the eHOA parity game benchmarks
-    - run: meson compile -C builddir/
+    # Run the entrypoint for a "--brief" subset of the
+    # eHOA parity game benchmarks
     - run: ./run.sh --brief
-    # Upload the meson test logs as an artifact.
     - uses: actions/upload-artifact@v4
       if: failure()
       with:
+        # Upload the meson test logs as an artifact.
         name: Linux_Meson_Testlog
         path: builddir/meson-logs/testlog.txt

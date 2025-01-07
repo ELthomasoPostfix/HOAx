@@ -59,15 +59,27 @@ The basic implementation for solving parity game realizability is **Zielonka's a
 # Compilation
 
 The meson build system is used to compile the build targets.
+
+Note that the `$LDFLAGS` environment variable must be set.
+During development, I had some issues with linking spot AND my locally created HOAx library, likely due to my inexperience with a more complex build pipeline. Namely, meson was not ordering the linker arguments correctly: meson kept placing the `-lspot` and the `-Wl,--copy-dt-needed-entries` linker flags *behind* the locally created libraries during linking. This usually resulted in the following error.
+
+```
+/usr/bin/ld: /usr/local/lib/libbddx.so.0: error adding symbols: DSO missing from command line
+```
+
 After cloning the git repo, we must setup meson at the **root of the project**.
 
 ```sh
 # The very first time, call without "--wipe"
-meson setup builddir/
-
 # Every time after that, prefer to add "--wipe".
 # This ensures other meson commands display any warnings.
+
+# Option (1): set the var for the current session
+export LDFLAGS="-Wl,--copy-dt-needed-entries"
 meson setup builddir/ --wipe
+
+# Option (2); set the var only for this command
+(export LDFLAGS="-Wl,--copy-dt-needed-entries" && meson setup builddir/ --wipe)
 ```
 
 Next, testing is done by invoking the meson test command.
@@ -77,7 +89,7 @@ Next, testing is done by invoking the meson test command.
 meson test -C builddir/ -v
 ```
 
-Lastly, you can compile all build targets at once. The meson build configuration was set up this way to make compilation as straight forward as possible.
+Lastly, compile all build targets.
 
 ```sh
 # Compile.
