@@ -1,5 +1,4 @@
 #include "utils.h"
-#include <iostream>
 #include <spot/parseaut/public.hh>
 
 void test_bdd_var_indexes(const bdd &expr, const int *expect_indexes, const unsigned int expect_size) {
