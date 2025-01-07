@@ -1,19 +1,5 @@
 #include "utils.h"
 
-bool contains(const std::set<int> *set, const int value) {
-    return set->find(value) != set->end();
-}
-
-std::ostream &operator<<(std::ostream &os, const HOAxState &state) {
-    os << "{" << state.first << ", " << state.second << "}";
-    return os;
-}
-
-bool operator<(const HOAxState &s1, const HOAxState &s2) {
-    // Resort to comparing bdd IDs to break equality ties.
-    return (s1.first < s2.first) || (s1.second.id() < s2.second.id());
-}
-
 bdd bdd_variables(const bdd &r) {
     return bdd_variables_(r, true);
 }
@@ -60,4 +46,33 @@ void bdd_var_indexes(const bdd &r, int **indexes, unsigned int *size) {
             (*indexes)[--count] = i;
 
     if (vprof) free(vprof);    // spot does not free this mem.
+}
+
+std::set<int> operator+(const std::set<int> &s1, const std::set<int> &s2) {
+  std::set<int> res = {};
+  std::set_union(s1.begin(), s1.end(), s2.begin(), s2.end(), std::inserter(res, res.end()));
+  return res;
+}
+
+std::set<int> operator-(const std::set<int> &s1, const std::set<int> &s2) {
+  std::set<int> res = {};
+  std::set_difference(s1.begin(), s1.end(), s2.begin(), s2.end(), std::inserter(res, res.end()));
+  return res;
+}
+
+bool contains(const std::set<int> *set, const int value) {
+    return set->find(value) != set->end();
+}
+
+std::ostream &operator<<(std::ostream &os, const std::set<int> &s) {
+  std::set<int>::iterator it;
+  os << "{";
+  for (it = s.begin(); it != s.end(); it++) {
+    if (it != s.begin())
+      os << ", ";
+    os << *it;
+  }
+  os << "}";
+
+  return os;
 }
