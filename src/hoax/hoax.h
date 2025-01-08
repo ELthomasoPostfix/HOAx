@@ -64,6 +64,9 @@ private:
 
     @param[out] W0 The winning set of player 0, Eve.
     @param[out] W1 The winning set of player 1, Adam.
+    @param[in] vertices All vertices to parition into W0 and W1.
+    @param[in] vertices_even The "even player" subset of vertices
+    @param[in] aut The parity game arena.
     @param[in] parity_max If true, then solve for the "parity max" condition.
                           Else solve for the "parity min" condition.
  */
@@ -75,6 +78,25 @@ void zielonka(
     const spot::twa_graph_ptr aut,
     const bool parity_max);
 
+/** Compute the attractor set for the given player and arena.
+
+    This is a loop-based implementation of the attractor set's recursive
+    definition.
+
+    Note that the sets "odd" and "even" vertices passed to this function
+    should be subsets of, but not necessarily equal to, the complete sets
+    of all "odd" resp. "even" states in the entire automaton.
+
+    @param[out] attr The attractor set
+    @param[in] vertices_odd The set of "odd player states" in the parity arena
+                            which to include in the attractor computation
+    @param[in] vertices_odd The set of "even player states" in the parity arena
+                            which to include in the attractor computation
+    @param[in] aut The parity arena
+    @param[in] T The vertices from which to start the attractor computation
+    @param[in] k The maximum recursion depth at which a fixpoint is guaranteed
+    @param[in] i The player for whom to compute the attractor set
+*/
 void attractor(
     std::set<int> *attr,
     const std::set<int> *vertices_odd,

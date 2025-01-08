@@ -141,9 +141,6 @@ void zielonka(
     const spot::twa_graph_ptr aut,
     const bool parity_max) {
 
-    std::cout << "Zielonka" << std::endl; // TODO: DELETE!!!!
-    std::cout << "A = " << *vertices << std::endl; // TODO: DELETE!!!!
-    std::cout << "E = " << *vertices_even << std::endl; // TODO: DELETE!!!!
 
     // TODO: The zielonka algorithm is state-based, but the eHOA benchmarks
     //       are exclusively transition-based!
@@ -174,7 +171,6 @@ void zielonka(
     // The player to support.
     const int player = m % 2;
 
-    std::cout << "m = " << m << " | player = " << player << std::endl; // TODO: DELETE!!!!
 
     // The vertices matching the extremum priority.
     std::set<int> M;
@@ -183,18 +179,15 @@ void zielonka(
             M.insert(vertex);
     }
 
-    std::cout << "M = " << M << std::endl; // TODO: DELETE!!!!
 
     // All remaining odd/Adam vertices.
-    std::set<int> vertices_odd;
-    for (int vertex : *vertices) {
-        if (!contains(vertices_even, vertex))
-            vertices_odd.insert(vertex);
-    }
+    std::set<int> vertices_odd = *vertices - *vertices_even;
+
 
     const int depth_max = vertices->size();
     std::set<int> R = {};
     attractor(&R, &vertices_odd, vertices_even, aut, &M, depth_max, player);
+
 
     auto Wcurr_p0 = player == PEVEN ? W0 : W1;  // W_i     = i == 0 ? W0 : W1
     auto Wprev_p0 = player == PEVEN ? W1 : W0;  // W_(i-1) = i == 0 ? W1 : W0
@@ -250,61 +243,54 @@ void attractor(
     assert(i == PEVEN || i == PODD); // Avoid invalid player.
 
     // Attr_i^0(G, T) = T
-    if (k == 0) {
-        attr->insert(T->begin(), T->end());
-        return;
-    }
+    attr->insert(T->begin(), T->end());
+    unsigned int size = attr->size();
+    const std::set<int> *vertices = nullptr;
+    for (unsigned int it = 0; it < k; it++) {
+        std::set<int> attr_rec;
 
-    std::set<int> attr_rec;
-    const std::set<int> *vertices;
+        /* Add all vertices where the player i can choose to enter the
+            attractor set themselves. */
+        vertices = (i == PEVEN) ? vertices_even : vertices_odd;
+        for (const int vertex : *vertices) {
+            for (auto edge : aut->out(vertex)) {
+                // The edge is an out edge of vertex, so vertex should be the src
+                assert(vertex == edge.src);
 
-    // Attr_i^(k-1)(G, T)
-    attractor(&attr_rec, vertices_odd, vertices_even, aut, T, k-1, i);
-
-    // Fixpoint reached, just pass up the fixpoint set/recursive result.
-    // TODO: A fixpoint could be reached before k=0, check for a fixpoint
-    //       and possibly quit early?
-    //   ==> Implement the attractors with a while loop instead of recursion!
-    // TODO: Check that fixpoint check actually works.
-    if (attr_rec.size() == (vertices_even->size() + vertices_odd->size())) {
-        *attr = std::move(*T);
-        return;
-    }
-
-    // Add all vertices where the player i can choose to enter the
-    // attractor set themselves.
-    vertices = i == PEVEN ? vertices_even : vertices_odd;
-    for (int vertex : *vertices) {
-        for (auto edge : aut->out(vertex)) {
-            // The edge is an out edge of vertex, so vertex should be the src
-            assert(vertex == edge.src);
-
-            if (contains(&attr_rec, edge.dst)) {
-                attr->insert(vertex);
-                break;
+                if (contains(attr, edge.dst)) {
+                    attr_rec.insert(vertex);
+                    break;
+                }
             }
         }
-    }
 
-    // Add all vertices where the player i can force the other player to enter
-    // the attractor set.
-    vertices = i == PEVEN ? vertices_odd : vertices_even;
-    for (int vertex : *vertices) {
-        bool can_avoid_attractors = true;
-        for (auto edge : aut->out(vertex)) {
-            // The edge is an out edge of vertex, so vertex should be the src
-            assert(vertex == edge.src);
+        /* Add all vertices where the player i can force the other player to
+            enter the attractor set. */
+        vertices = (i == PEVEN) ? vertices_odd : vertices_even;
+        for (const int vertex : *vertices) {
+            bool can_avoid_attractors = true;
+            for (auto edge : aut->out(vertex)) {
+                // The edge is an out edge of vertex, so vertex should be the src
+                assert(vertex == edge.src);
 
-            if (!contains(&attr_rec, edge.dst)) {
-                can_avoid_attractors = false;
-                break;
+                if (!contains(attr, edge.dst)) {
+                    can_avoid_attractors = false;
+                    break;
+                }
             }
+            if (can_avoid_attractors)
+                attr_rec.insert(vertex);
         }
-        if (can_avoid_attractors)
-            attr->insert(vertex);
-    }
 
-    attr->insert(attr_rec.begin(), attr_rec.end());
+        attr->insert(attr_rec.begin(), attr_rec.end());
+
+        /* Fixpoint reached, further iteration is redundant. */
+        if (attr->size() == size)
+            return;
+
+        /* Fixpoint not reached, update the var used to verify a fixpoint! */
+        size = attr->size();
+    }
 }
 
 unsigned int priority(const spot::acc_cond::mark_t &mark, const bool parity_max) {
