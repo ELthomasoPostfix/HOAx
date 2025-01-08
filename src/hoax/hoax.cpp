@@ -9,7 +9,7 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
 
     /* In a spot/HOA TwA every state corresponds to an integer state "index".
         Preallocate one new state for every existing state. This ensures there is
-        a 1 to 1 mapping from old TwA integer state and new TwA integer state. */
+        a 1 to 1 mapping from old TwA state integer to new TwA state integer. */
     assert(this->exp->num_states() == 0);
     this->exp->new_states(aut->num_states());
 
@@ -30,13 +30,13 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
         bdd_var_indexes(unc_uvars, &indexes, &size);
 
         /* Generate all possible evaluations of the uncontrollable vars.
-        Every integer in [0, 2^k] for k uncontrollable variables
-        maps to a single evaluation of those variables, based on the
-        binary representation of that integer. e.g.
-            000  =>  !a & !b & !c
-            001  =>  !a & !b & c
-            ...
-            111  =>  a & b & c
+            Every integer in [0, 2^k] for k uncontrollable variables
+            maps to a single evaluation of those variables, based on the
+            binary representation of that integer. e.g.
+                000  =>  !a & !b & !c
+                001  =>  !a & !b & c
+                ...
+                111  =>  a & b & c
         */
         for (int eval_nr = 0; eval_nr < std::pow(2, size); eval_nr++) {
             bdd eval = bddtrue;
@@ -51,12 +51,10 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
             std::vector<spot::twa_graph::edge_storage_t*> destinations;
             for (auto &edge : aut->out(state)) {
                 /* If the edge is still satisfiable after the odd player chooses
-                a uncontrollable var evaluation, then it induces a new edge.
-                i.e. the even player can still make a move.
-                */
-                if (bdd_satone(bdd_restrict(edge.cond, eval)) != bddfalse) {
-                destinations.push_back(&edge);
-                }
+                    a uncontrollable var evaluation, then it induces a new edge.
+                    i.e. the even player can still make a move. */
+                if (bdd_satone(bdd_restrict(edge.cond, eval)) != bddfalse)
+                    destinations.push_back(&edge);
             }
 
             /* The eval of the uncontrollable variables results in none of the
@@ -87,17 +85,27 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
         }
         if (indexes) free(indexes);
     }
+
+    /* Overwrite the "state-player" named spot prop of the parity arena.
+       This makes the it explicit what states each player owns:
+       1) the "odd player" owns true (1) "state-player" states
+       2) the "even player" owns false (0) "state-player" states */
+    auto state_player = this->exp->get_or_set_named_prop<std::vector<bool>>("state-player");
+    state_player->resize(this->exp->num_states());
+    std::fill_n(state_player->begin(), this->src->num_states(), true);
+    std::fill(state_player->begin() + this->src->num_states(), state_player->end(), false);
 }
 
 void HOAxParityTwA::set_state_names() {
     auto names = this->exp->get_or_set_named_prop<std::vector<std::string>>("state-names");
     names->resize(this->exp->num_states());
-    const unsigned int src_size = this->src->num_states();
-    const unsigned int aut_size = this->exp->num_states();
-    for (unsigned int i = 0; i < src_size; i++)
-        (*names)[i] = ("A" + std::to_string(i));
-    for (unsigned int i = src_size; i < aut_size; i++)
-        (*names)[i] = ("E" + std::to_string(i));
+
+    auto state_players = spot::get_state_players(this->exp);
+    const unsigned int exp_size = this->exp->num_states();
+    /* The "state-player" array must have been computed already! */
+    assert(state_players.size() == exp_size);
+    for (unsigned int i = 0; i < this->exp->num_states(); i++)
+        (*names)[i] = (state_players[i] ? "A" : "E") + std::to_string(i);
 }
 
 std::set<int> HOAxParityTwA::get_all_states() const {
@@ -109,15 +117,19 @@ std::set<int> HOAxParityTwA::get_all_states() const {
 
 std::set<int> HOAxParityTwA::get_even_states() const {
     std::set<int> states;
-    for (unsigned int i = this->src->num_states(); i < this->exp->num_states(); i++)
-        states.insert(i);
+    auto state_players = spot::get_state_players(this->exp);
+    for (unsigned int i = 0; i < this->exp->num_states(); i++)
+        if (!state_players[i])
+            states.insert(i);
     return states;
 }
 
 std::set<int> HOAxParityTwA::get_odd_states() const {
     std::set<int> states;
-    for (unsigned int i = 0; i < this->src->num_states(); i++)
-        states.insert(i);
+    auto state_players = spot::get_state_players(this->exp);
+    for (unsigned int i = 0; i < this->exp->num_states(); i++)
+        if (state_players[i])
+            states.insert(i);
     return states;
 }
 
@@ -144,9 +156,10 @@ void zielonka(
     /* Base case: no more vertices remain to be checked. */
     if (vertices_even->empty()) {
         /* Any odd vertices not assigned to a winnable set by now are
-          "odd player" vertices with no outgoing edges, i.e. sink nodes.
-          We assumed no sink nodes existed! */
-        assert(vertices->empty());
+            "odd player" vertices" with no outgoing edges, i.e. sink nodes.
+            We assumed no sink nodes existed! */
+        if (!vertices->empty())
+            throw std::runtime_error("Sink nodes detected. No sink nodes are allowed.");
         return;
     }
 

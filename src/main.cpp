@@ -193,27 +193,57 @@ int main(int argc, char *argv[]) {
 
 
 
+    std::set<int> W0 = {};
     std::set<int> W1 = {};
-    std::set<int> W2 = {};
     std::set<int> vertices = hptwa.get_all_states();
     std::set<int> vertices_even = hptwa.get_even_states();
 
-    zielonka(&W1, &W2, &vertices, &vertices_even, expanded, pmax);
+    zielonka(&W0, &W1, &vertices, &vertices_even, expanded, pmax);
+
+    std::cout << "W0: " << W0 << std::endl;
+    std::cout << "W1: " << W1 << std::endl;
 
     // The initial/start state.
     unsigned int sI = aut->get_init_state_number();
 
     // Call my own implementation of a parity game solver.
-    const bool SOL_COMPUTED = podd ? contains(&W2, sI) : contains(&W1, sI);
+    const bool SOL_COMPUTED = podd ? contains(&W1, sI) : contains(&W0, sI);
     const std::string SOL_STR_COMPUTED = SOL_COMPUTED ? "REAL" : "UNREAL";
+    const std::string sodd = podd ? "ODD" : "EVEN";
+    const std::string smax = pmax ? "MAX" : "MIN";
 
-    // Compare against spot's implementation as a baseline.
-    const bool SOL_ACTUAL = false;
-    // const bool SOL_ACTUAL = spot::solve_parity_game(aut);  // TODO: Is this possible with our given benchmarks???
-    const std::string SOL_STR_ACTUAL = SOL_ACTUAL ? "REAL" : "UNREAL";
+    if (flag_verbose) {
+      /* Compare against spot's implementation as a baseline.
+        Spot's `solve_parity_game()` function explicitly solves for
+        a deterministic max odd parity automaton.
 
-    printf ("computed=%s actual=%s\t%s\n",
-      SOL_STR_COMPUTED.c_str(), SOL_STR_ACTUAL.c_str(), path_in);
+        See spot's docs:
+            https://spot.lre.epita.fr/doxygen/group__games.html#ga5282822f1079cdefc43a1d1b0c83a024
+       */
+      const bool SOL_ACTUAL = !spot::solve_parity_game(expanded);
+      const std::string SOL_STR_ACTUAL = SOL_ACTUAL ? "REAL" : "UNREAL";
+
+      std::set<int> W0_actual;
+      std::set<int> W1_actual;
+      for (unsigned int state = 0; state < expanded->num_states(); state++)
+        if (spot::get_state_winner(expanded, state))
+          W1_actual.insert(state);
+        else
+          W0_actual.insert(state);
+
+      std::cout << "W0_actual: " << W0_actual << std::endl;
+      std::cout << "W1_actual: " << W1_actual << std::endl;
+
+      std::cout << "W0 == W0_actual = " << (W0 == W0_actual) << std::endl;
+      std::cout << "W1 == W1_actual = " << (W1 == W1_actual) << std::endl;
+
+      printf ("<%s, %s> computed=%s actual=%s\t%s\n",
+        smax.c_str(), sodd.c_str(), SOL_STR_COMPUTED.c_str(),
+        SOL_STR_ACTUAL.c_str(), path_in);
+    }
+    else
+      printf ("%s\t%s\n",
+        SOL_STR_COMPUTED.c_str(), path_in);
   }
 
 

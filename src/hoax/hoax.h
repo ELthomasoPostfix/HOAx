@@ -12,10 +12,10 @@
 #include <spot/parseaut/public.hh>
 #include <spot/twaalgos/game.hh>
 
-#define PEVEN 0
 /** The player 'index' for the even player, player 0, Eve. */
-#define PODD  1
+#define PEVEN 0
 /** The player 'index' for the odd player, player 1, Adam. */
+#define PODD  1
 
 /** An interface for expanding a parity automaton into a parity arena.
 
