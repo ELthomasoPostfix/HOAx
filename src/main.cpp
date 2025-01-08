@@ -170,11 +170,11 @@ int main(int argc, char *argv[]) {
         break;
       }
     }
-    if (found_invalid_edge) {
+    if (found_invalid_edge)
       continue;
-    }
 
-    hoax::to_dot(path_in, DEFAULT_DIR_OUT, aut);
+    if (flag_verbose)
+      hoax::to_dot(path_in, DEFAULT_DIR_OUT, aut);
 
     // TODO: For Buchi automata, annotate any transition without acceptance set
     //       with odd parity/acceptance set 1? Because we want to solve for
@@ -182,11 +182,12 @@ int main(int argc, char *argv[]) {
     //       with even/0 parity? Or just re-read the mail of Guillermo.
 
 
-    try{
+    try {
       hoax::HOAxParityTwA hptwa = hoax::HOAxParityTwA(aut, start, deadline);
       hptwa.set_state_names();
 
-      hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.exp);
+      if (flag_verbose)
+        hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.exp);
 
       std::set<int> W0 = {};
       std::set<int> W1 = {};
@@ -199,7 +200,6 @@ int main(int argc, char *argv[]) {
       unsigned int sI = aut->get_init_state_number();
 
       // Call my own implementation of a parity game solver.
-      std::cout << "podd: " << podd << std::endl;
       const bool SOL_COMPUTED = podd ? hoax::contains(&W1, sI) : hoax::contains(&W0, sI);
       const std::string SOL_STR_COMPUTED = SOL_COMPUTED ? "REAL" : "UNREAL";
       const std::string sodd = podd ? "ODD" : "EVEN";
