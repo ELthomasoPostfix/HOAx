@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     std::string prop_name;
     // The "state-player" prop is NOT specified in the benchmarks!
     // Since it's a spot extension to HOA, our inputs should not have it!
-    prop_name = "state-player";
+    prop_name = PROP_SPOT_STATE_PLAYER;
     auto state_player = aut->get_named_prop<std::vector<bool>>(prop_name);
     if (state_player != nullptr) {
       printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     // The "state-winner" prop is probably only set by spot after solving
     // the parity game with its builtin algo?
     // Since it's a spot extension to HOA, our inputs should not have it!
-    prop_name = "state-winner";
+    prop_name = PROP_SPOT_STATE_WINNER;
     auto state_winner = aut->get_named_prop<std::vector<bool>>(prop_name);
     if (state_winner != nullptr) {
       printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     // The "strategy" prop is probably only set by spot after solving
     // the parity game with its builtin algo?
     // Since it's a spot extension to HOA, our inputs should not have it!
-    prop_name = "strategy";
+    prop_name = PROP_SPOT_STRAT;
     auto strategy = aut->get_named_prop<std::vector<unsigned>>(prop_name);
     if (strategy != nullptr) {
       printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
       results in a "synthesis-outputs" bdd that represents the propositional
       formula (a & c).
      */
-    prop_name = "synthesis-outputs";
+    prop_name = PROP_SPOT_SYNTH_OUTPUT;
     auto synth_out = aut->get_named_prop<bdd>(prop_name);
     if (synth_out == nullptr) {
       printf("SKIP\tPROP MISSING %s\t%s\n", prop_name.c_str(), path_in.c_str());
@@ -173,9 +173,6 @@ int main(int argc, char *argv[]) {
     if (found_invalid_edge)
       continue;
 
-    if (flag_verbose)
-      hoax::to_dot(path_in, DEFAULT_DIR_OUT, aut);
-
     // TODO: For Buchi automata, annotate any transition without acceptance set
     //       with odd parity/acceptance set 1? Because we want to solve for
     //       parity even, so all transitions/states already annotated correspond
@@ -186,48 +183,33 @@ int main(int argc, char *argv[]) {
       hoax::HOAxParityTwA hptwa = hoax::HOAxParityTwA(aut, start, deadline);
       hptwa.set_state_names();
 
-      if (flag_verbose)
+      if (flag_verbose) {
+        hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.src);
         hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.exp);
-
-      std::set<int> W0 = {};
-      std::set<int> W1 = {};
-      std::set<int> vertices = hptwa.get_all_states();
-      std::set<int> vertices_even = hptwa.get_even_states();
-
-      hoax::zielonka(&W0, &W1, &vertices, &vertices_even, hptwa, pmax);
-
-      // The initial/start state.
-      unsigned int sI = aut->get_init_state_number();
+      }
 
       // Call my own implementation of a parity game solver.
-      const bool SOL_COMPUTED = podd ? hoax::contains(&W1, sI) : hoax::contains(&W0, sI);
+      const bool SOL_COMPUTED = hptwa.solve_parity_game(pmax);
       const std::string SOL_STR_COMPUTED = SOL_COMPUTED ? "REAL" : "UNREAL";
-      const std::string sodd = podd ? "ODD" : "EVEN";
-      const std::string smax = pmax ? "MAX" : "MIN";
 
       if (flag_baseline) {
         /* Compare against spot's implementation as a baseline.
           Spot's `solve_parity_game()` function explicitly solves for
           a deterministic max odd parity automaton?
 
-          See spot's docs:
-              https://spot.lre.epita.fr/doxygen/group__games.html#ga5282822f1079cdefc43a1d1b0c83a024
+          See spot's docs: https://spot.lre.epita.fr/doxygen/group__games.html#ga5282822f1079cdefc43a1d1b0c83a024
         */
         const bool SOL_ACTUAL = !spot::solve_parity_game(hptwa.exp);
         const std::string SOL_STR_ACTUAL = SOL_ACTUAL ? "REAL" : "UNREAL";
 
-        std::set<int> W0_actual;
-        std::set<int> W1_actual;
-        for (unsigned int state = 0; state < hptwa.exp->num_states(); state++)
-          if (spot::get_state_winner(hptwa.exp, state))
-            W1_actual.insert(state);
-          else
-            W0_actual.insert(state);
-
         if (flag_verbose) {
-          std::cout << "W0 == W0_actual = " << (W0 == W0_actual) << std::endl;
-          std::cout << "W1 == W1_actual = " << (W1 == W1_actual) << std::endl;
+          auto state_winners_spot = hptwa.exp->get_or_set_named_prop<std::vector<bool>>(PROP_SPOT_STATE_WINNER);
+          auto state_winners_hoax = hptwa.exp->get_or_set_named_prop<std::vector<bool>>(PROP_HOAX_STATE_WINNER);
+          std::cout << "Winners(spot) == Winners(hoax) : " << (*state_winners_spot == *state_winners_hoax) << std::endl;
         }
+
+        const std::string sodd = podd ? "ODD" : "EVEN";
+        const std::string smax = pmax ? "MAX" : "MIN";
 
         printf ("<%s, %s> computed=%s actual=%s\t%s\n",
           smax.c_str(), sodd.c_str(), SOL_STR_COMPUTED.c_str(),

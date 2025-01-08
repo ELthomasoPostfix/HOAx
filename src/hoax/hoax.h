@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <utility>
 #include <climits>
+#include <vector>
 #include <cmath>
 #include <set>
 #include <spot/parseaut/public.hh>
@@ -16,6 +17,15 @@ namespace hoax {
     #define PEVEN 0
     /** The player 'index' for the odd player, player 1, Adam. */
     #define PODD  1
+
+    /* Define spot named property constants. */
+    #define PROP_SPOT_STATE_WINNER "state-winner"
+    #define PROP_SPOT_SYNTH_OUTPUT "synthesis-outputs"
+    #define PROP_SPOT_STRAT "strategy"
+    #define PROP_SPOT_STATE_PLAYER "state-player"
+
+    /* Define hoax named property constants. */
+    #define PROP_HOAX_STATE_WINNER "state-winner-hoax"
 
     /** An interface for expanding a parity automaton into a parity arena.
 
@@ -53,9 +63,22 @@ namespace hoax {
         */
         HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t &start_t, const clock_t &deadline_t);
 
+        /** Solve a "min/max even" parity game.
+
+            @param[in] parity_max If true, then solve for the "parity max" condition.
+                                  Else solve for the "parity min" condition.
+            @return true iff. the "even" player wins from the initial state.
+                    Else false, i.e. the "odd" player wins from the initial state.
+         */
+        bool solve_parity_game(const bool parity_max) const;
+
         /** Overwrite the "state-names" named spot prop of the parity arena. */
         void set_state_names();
 
+        /** Throw a `std::runtime_error` iff. `clock() > this->deadline`. */
+        void assert_deadline() const;
+
+    private:
         /* Get the set of all state numbers. */
         std::set<int> get_all_states() const;
 
@@ -64,9 +87,6 @@ namespace hoax {
 
         /* Get the set of state numbers for "odd player states". */
         std::set<int> get_odd_states() const;
-
-        /** Throw a `std::runtime_error` iff. `clock() > this->deadline`. */
-        void assert_deadline() const;
     };
 
     /** Zielonka's algorithm for solving a parity game.

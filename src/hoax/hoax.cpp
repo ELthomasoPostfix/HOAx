@@ -104,6 +104,40 @@ hoax::HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t 
     std::fill(state_player->begin() + this->src->num_states(), state_player->end(), false);
 }
 
+bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
+    std::set<int> W0 = {};  // The "even player" winning states
+    std::set<int> W1 = {};  // The "odd player" winning states
+    std::set<int> vertices = this->get_all_states();
+    std::set<int> vertices_even = this->get_even_states();
+
+    hoax::zielonka(&W0, &W1, &vertices, &vertices_even, *this, parity_max);
+
+    /* Setup the hoax's counterpart to spot's "state-winner" named prop. */
+    auto state_winners_hoax = this->exp->get_or_set_named_prop<std::vector<bool>>(PROP_HOAX_STATE_WINNER);
+    /* Initialize the hoax state winners to the "even player" winning by default. */
+    state_winners_hoax->resize(this->exp->num_states(), PEVEN);
+    /* Overwrite the "odd player" winning states. */
+    for (const auto winner_odd : W1)
+        (*state_winners_hoax)[winner_odd] = PODD;
+
+    // The initial/start state.
+    const unsigned int init_state = this->exp->get_init_state_number();
+
+    /* Solving for "parity odd" is the complement of solving for "parity even"
+        and vice versa; exactly one of the players must win from the initial
+        state. So, explicitly require exactly one player to win. */
+    const bool even_wins = hoax::contains(&W0, init_state);
+    const bool odd_wins = hoax::contains(&W1, init_state);
+    if (!(even_wins xor odd_wins)) {
+        const std::string sowin = (odd_wins ? "WINS" : "LOSES");
+        const std::string sewin = (even_wins ? "WINS" : "LOSES");
+        throw std::runtime_error("Exactly one player should win the parity game, but EVEN " + sewin + " and ODD " + sowin);
+    }
+
+    /* Always solve for "parity even". */
+    return even_wins;
+}
+
 void hoax::HOAxParityTwA::set_state_names() {
     auto names = this->exp->get_or_set_named_prop<std::vector<std::string>>("state-names");
     names->resize(this->exp->num_states());
@@ -114,6 +148,16 @@ void hoax::HOAxParityTwA::set_state_names() {
     assert(state_players.size() == exp_size);
     for (unsigned int i = 0; i < this->exp->num_states(); i++)
         (*names)[i] = (state_players[i] ? "A" : "E") + std::to_string(i);
+}
+
+void hoax::HOAxParityTwA::assert_deadline() const {
+  const clock_t now = clock();
+  if (now <= this->deadline)
+    return;
+
+  std::string sruntime = std::to_string((now - this->start) / (float)CLOCKS_PER_SEC);
+  std::string sruntime_max = std::to_string((this->deadline - this->start) / (float)CLOCKS_PER_SEC);
+  throw std::runtime_error("Runtime (" + sruntime + "s) exceeds max runtime (" + sruntime_max + "s).");
 }
 
 std::set<int> hoax::HOAxParityTwA::get_all_states() const {
@@ -139,16 +183,6 @@ std::set<int> hoax::HOAxParityTwA::get_odd_states() const {
         if (state_players[i])
             states.insert(i);
     return states;
-}
-
-void hoax::HOAxParityTwA::assert_deadline() const {
-  const clock_t now = clock();
-  if (now <= this->deadline)
-    return;
-
-  std::string sruntime = std::to_string((now - this->start) / (float)CLOCKS_PER_SEC);
-  std::string sruntime_max = std::to_string((this->deadline - this->start) / (float)CLOCKS_PER_SEC);
-  throw std::runtime_error("Runtime (" + sruntime + "s) exceeds max runtime (" + sruntime_max + "s).");
 }
 
 void hoax::zielonka(
