@@ -1,21 +1,36 @@
 #include "hoax.h"
 #include "utils.h"
+#include <filesystem>
 #include <iostream>
 #include <getopt.h>
-#include <fstream>
-#include <cmath>
-#include <filesystem>
 #include <spot/parseaut/public.hh>
-#include <spot/twaalgos/dot.hh>
 
-/* Flag set by "--verbose" */
+/** Flag set by "-v" */
 static int flag_verbose = 0;
+
+/** Flag set by "-b" */
+static int flag_baseline = 0;
+
+/** The default output directory. */
+const std::filesystem::path DEFAULT_DIR_OUT("output/");
+
+/** The default input directory. */
+const std::filesystem::path DEFAULT_DIR_IN("input/");
+
+/** The maximum runtime allowed for solving a parity game, in seconds.
+    Quit early if this deadline is exceeded. */
+const unsigned int RUNTIME_MAX_SEC = 30;
+
 
 int main(int argc, char *argv[]) {
   while (true) {
-    switch (getopt(argc, argv, "hv")) {
+    switch (getopt(argc, argv, "hvb")) {
       case 'v':
         flag_verbose = 1;
+        continue;
+
+      case 'b':
+        flag_baseline = 1;
         continue;
 
       case 'h': {
@@ -23,6 +38,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Options:" << std::endl;
         std::cout << "  -h             Show this help message and exit" << std::endl;
         std::cout << "  -v             Enable verbose output" << std::endl;
+        std::cout << "  -b             Call spot's parity game solver as a baseline comparison" << std::endl;
         std::cout << "Arguments:" << std::endl;
         std::cout << "  A space separated list of file paths to" << std::endl;
         std::cout << "  eHOA input files of parity games (arenas)" << std::endl;
@@ -37,8 +53,17 @@ int main(int argc, char *argv[]) {
     puts ("verbose flag is set");
 
   while (optind < argc) {
-    char *path_in = argv[optind++];
+    /* Each game has an individual runtime deadline. */
+    const clock_t start = clock();
+    const clock_t deadline = start + RUNTIME_MAX_SEC * CLOCKS_PER_SEC;
 
+    std::filesystem::path path_in(argv[optind++]);
+
+    /* Ensure the input path exists. */
+    if (!std::filesystem::exists(path_in)) {
+      printf("SKIP\tPATH DOES NOT EXIST\t%s\n", path_in.c_str());
+      continue;
+    }
 
     // Customize parser options. See
     // https://spot.lre.epita.fr/doxygen/structspot_1_1automaton__parser__options.html
@@ -48,17 +73,17 @@ int main(int argc, char *argv[]) {
     // https://spot.lre.epita.fr/doxygen/group__twa__io.html#ga7ddd70d2b02e1234814a2f7fa6afe052
     spot::parsed_aut_ptr pa = spot::parse_aut(path_in, spot::make_bdd_dict(), env, opts);
     if (flag_verbose && pa->format_errors(std::cout)) {
-      printf("SKIP\tFORMAT ERR\t%s\n", path_in);
+      printf("SKIP\tFORMAT ERR\t%s\n", path_in.c_str());
       continue;
     }
     if (pa->aborted) {
-      printf("SKIP\tABORT\t%s\n", path_in);
+      printf("SKIP\tABORT\t%s\n", path_in.c_str());
       continue;
     }
 
     spot::twa_graph_ptr aut = pa->aut;
     if (aut == nullptr) {
-      printf("SKIP\tTwA MISSING\t%s\n", path_in);
+      printf("SKIP\tTwA MISSING\t%s\n", path_in.c_str());
       continue;
     }
 
@@ -68,7 +93,7 @@ int main(int argc, char *argv[]) {
     prop_name = "state-player";
     auto state_player = aut->get_named_prop<std::vector<bool>>(prop_name);
     if (state_player != nullptr) {
-      printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in);
+      printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
       continue;
     }
 
@@ -78,7 +103,7 @@ int main(int argc, char *argv[]) {
     prop_name = "state-winner";
     auto state_winner = aut->get_named_prop<std::vector<bool>>(prop_name);
     if (state_winner != nullptr) {
-      printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in);
+      printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
       continue;
     }
 
@@ -88,7 +113,7 @@ int main(int argc, char *argv[]) {
     prop_name = "strategy";
     auto strategy = aut->get_named_prop<std::vector<unsigned>>(prop_name);
     if (strategy != nullptr) {
-      printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in);
+      printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
       continue;
     }
 
@@ -111,7 +136,7 @@ int main(int argc, char *argv[]) {
     prop_name = "synthesis-outputs";
     auto synth_out = aut->get_named_prop<bdd>(prop_name);
     if (synth_out == nullptr) {
-      printf("SKIP\tPROP MISSING %s\t%s\n", prop_name.c_str(), path_in);
+      printf("SKIP\tPROP MISSING %s\t%s\n", prop_name.c_str(), path_in.c_str());
       continue;
     }
 
@@ -120,7 +145,7 @@ int main(int argc, char *argv[]) {
     bool pmax = true;  // default = max
     bool podd = false; // default = even
     if (!(aut->acc().is_parity(pmax, podd) || aut->acc().is_f())) {
-      printf("WARN\tNON-PARITY TwA? '%s'\t%s\n", aut->acc().name().c_str(), path_in);
+      printf("WARN\tNON-PARITY TwA? '%s'\t%s\n", aut->acc().name().c_str(), path_in.c_str());
       continue;
     }
 
@@ -141,7 +166,7 @@ int main(int argc, char *argv[]) {
     for (const auto &edge : aut->edges()) {
       if (!edge.acc.is_singleton()) {
         found_invalid_edge = true;
-        printf("SKIP\t EDGE HAS %i ACCEPTING SETS, EXPECTED EXACTLY 1\t%s\n", edge.acc.count(), path_in);
+        printf("SKIP\t EDGE HAS %i ACCEPTING SETS, EXPECTED EXACTLY 1\t%s\n", edge.acc.count(), path_in.c_str());
         break;
       }
     }
@@ -149,16 +174,7 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-
-    // TODO: DELETE \/ DELETE \/ DELETE \/ DELETE \/
-    std::string path_out_dot = "output/" + std::filesystem::path(path_in).filename().string() + ".dot";
-    std::ofstream dot_of(path_out_dot);
-    if (!dot_of.is_open()) return 1;
-    spot::print_dot(dot_of, aut);
-    std::cout << "Generated dot file at: " << path_out_dot << std::endl;
-    // TODO: DELETE /\ DELETE /\ DELETE /\ DELETE /\ 
-
-
+    hoax::to_dot(path_in, DEFAULT_DIR_OUT, aut);
 
     // TODO: For Buchi automata, annotate any transition without acceptance set
     //       with odd parity/acceptance set 1? Because we want to solve for
@@ -166,84 +182,63 @@ int main(int argc, char *argv[]) {
     //       with even/0 parity? Or just re-read the mail of Guillermo.
 
 
+    try{
+      hoax::HOAxParityTwA hptwa = hoax::HOAxParityTwA(aut, start, deadline);
+      hptwa.set_state_names();
 
-    /* TODO: Move these references to the func docs of zielonka() ????
+      hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.exp);
 
-      See spot's `bdd` operation implementations `bdd_exist()`, `quantify(...)`
-      `bdd_existcomp()`, ... in the following section of spot's docs:
-          https://gitlab.lre.epita.fr/spot/spot/-/blob/next/buddy/src/bddop.c#L2212
-     */
+      std::set<int> W0 = {};
+      std::set<int> W1 = {};
+      std::set<int> vertices = hptwa.get_all_states();
+      std::set<int> vertices_even = hptwa.get_even_states();
 
-    std::cout << "(a)" << std::endl;
-    HOAxParityTwA hptwa = HOAxParityTwA(aut);
-    std::cout << "(b)" << std::endl;
-    hptwa.set_state_names();
-    std::cout << "(c)" << std::endl;
-    spot::twa_graph_ptr expanded = hptwa.exp;
+      hoax::zielonka(&W0, &W1, &vertices, &vertices_even, hptwa, pmax);
 
+      // The initial/start state.
+      unsigned int sI = aut->get_init_state_number();
 
+      // Call my own implementation of a parity game solver.
+      std::cout << "podd: " << podd << std::endl;
+      const bool SOL_COMPUTED = podd ? hoax::contains(&W1, sI) : hoax::contains(&W0, sI);
+      const std::string SOL_STR_COMPUTED = SOL_COMPUTED ? "REAL" : "UNREAL";
+      const std::string sodd = podd ? "ODD" : "EVEN";
+      const std::string smax = pmax ? "MAX" : "MIN";
 
-    // TODO: DELETE \/ DELETE \/ DELETE \/ DELETE \/
-    std::string path_out_dot_2 = "output/" + std::filesystem::path(path_in).filename().string() + "_EXP.dot";
-    std::ofstream dot_of_2(path_out_dot_2);
-    if (!dot_of_2.is_open()) return 1;
-    spot::print_dot(dot_of_2, expanded, "t");
-    std::cout << "Generated dot file at: " << path_out_dot_2 << std::endl;
-    // TODO: DELETE /\ DELETE /\ DELETE /\ DELETE /\ 
+      if (flag_baseline) {
+        /* Compare against spot's implementation as a baseline.
+          Spot's `solve_parity_game()` function explicitly solves for
+          a deterministic max odd parity automaton?
 
+          See spot's docs:
+              https://spot.lre.epita.fr/doxygen/group__games.html#ga5282822f1079cdefc43a1d1b0c83a024
+        */
+        const bool SOL_ACTUAL = !spot::solve_parity_game(hptwa.exp);
+        const std::string SOL_STR_ACTUAL = SOL_ACTUAL ? "REAL" : "UNREAL";
 
+        std::set<int> W0_actual;
+        std::set<int> W1_actual;
+        for (unsigned int state = 0; state < hptwa.exp->num_states(); state++)
+          if (spot::get_state_winner(hptwa.exp, state))
+            W1_actual.insert(state);
+          else
+            W0_actual.insert(state);
 
-    std::set<int> W0 = {};
-    std::set<int> W1 = {};
-    std::set<int> vertices = hptwa.get_all_states();
-    std::set<int> vertices_even = hptwa.get_even_states();
+        if (flag_verbose) {
+          std::cout << "W0 == W0_actual = " << (W0 == W0_actual) << std::endl;
+          std::cout << "W1 == W1_actual = " << (W1 == W1_actual) << std::endl;
+        }
 
-    zielonka(&W0, &W1, &vertices, &vertices_even, expanded, pmax);
-
-    std::cout << "W0: " << W0 << std::endl;
-    std::cout << "W1: " << W1 << std::endl;
-
-    // The initial/start state.
-    unsigned int sI = aut->get_init_state_number();
-
-    // Call my own implementation of a parity game solver.
-    const bool SOL_COMPUTED = podd ? contains(&W1, sI) : contains(&W0, sI);
-    const std::string SOL_STR_COMPUTED = SOL_COMPUTED ? "REAL" : "UNREAL";
-    const std::string sodd = podd ? "ODD" : "EVEN";
-    const std::string smax = pmax ? "MAX" : "MIN";
-
-    if (flag_verbose) {
-      /* Compare against spot's implementation as a baseline.
-        Spot's `solve_parity_game()` function explicitly solves for
-        a deterministic max odd parity automaton.
-
-        See spot's docs:
-            https://spot.lre.epita.fr/doxygen/group__games.html#ga5282822f1079cdefc43a1d1b0c83a024
-       */
-      const bool SOL_ACTUAL = !spot::solve_parity_game(expanded);
-      const std::string SOL_STR_ACTUAL = SOL_ACTUAL ? "REAL" : "UNREAL";
-
-      std::set<int> W0_actual;
-      std::set<int> W1_actual;
-      for (unsigned int state = 0; state < expanded->num_states(); state++)
-        if (spot::get_state_winner(expanded, state))
-          W1_actual.insert(state);
-        else
-          W0_actual.insert(state);
-
-      std::cout << "W0_actual: " << W0_actual << std::endl;
-      std::cout << "W1_actual: " << W1_actual << std::endl;
-
-      std::cout << "W0 == W0_actual = " << (W0 == W0_actual) << std::endl;
-      std::cout << "W1 == W1_actual = " << (W1 == W1_actual) << std::endl;
-
-      printf ("<%s, %s> computed=%s actual=%s\t%s\n",
-        smax.c_str(), sodd.c_str(), SOL_STR_COMPUTED.c_str(),
-        SOL_STR_ACTUAL.c_str(), path_in);
+        printf ("<%s, %s> computed=%s actual=%s\t%s\n",
+          smax.c_str(), sodd.c_str(), SOL_STR_COMPUTED.c_str(),
+          SOL_STR_ACTUAL.c_str(), path_in.c_str());
+      }
+      else
+        printf ("%s\t%s\n",
+          SOL_STR_COMPUTED.c_str(), path_in.c_str());
+    } catch (std::runtime_error &e) {
+      std::cout << "SKIP\t" << e.what() << "\t" << path_in.string() << std::endl;
     }
-    else
-      printf ("%s\t%s\n",
-        SOL_STR_COMPUTED.c_str(), path_in);
   }
 
 

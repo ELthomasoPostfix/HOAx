@@ -1,14 +1,14 @@
 #include "utils.h"
 
-bdd bdd_variables(const bdd &r) {
-    return bdd_variables_(r, true);
+bdd hoax::bdd_variables(const bdd &r) {
+    return hoax::bdd_variables_(r, true);
 }
 
-bdd bdd_variablescomp(const bdd &r) {
-    return bdd_variables_(r, false);
+bdd hoax::bdd_variablescomp(const bdd &r) {
+    return hoax::bdd_variables_(r, false);
 }
 
-bdd bdd_variables_(const bdd &r, const bool var_should_appear) {
+bdd hoax::bdd_variables_(const bdd &r, const bool var_should_appear) {
     int *vprof = bdd_varprofile(r);
 
     /* Use a boolean rule: T & a = a */
@@ -23,7 +23,7 @@ bdd bdd_variables_(const bdd &r, const bool var_should_appear) {
     return conjunction;
 }
 
-void bdd_var_indexes(const bdd &r, int **indexes, unsigned int *size) {
+void hoax::bdd_var_indexes(const bdd &r, int **indexes, unsigned int *size) {
     /* Can only pass up the assigned array if the pointer is valid. */
     assert(indexes != nullptr);
     assert(size != nullptr);
@@ -48,23 +48,23 @@ void bdd_var_indexes(const bdd &r, int **indexes, unsigned int *size) {
     if (vprof) free(vprof);    // spot does not free this mem.
 }
 
-std::set<int> operator+(const std::set<int> &s1, const std::set<int> &s2) {
+std::set<int> hoax::operator+(const std::set<int> &s1, const std::set<int> &s2) {
   std::set<int> res = {};
   std::set_union(s1.begin(), s1.end(), s2.begin(), s2.end(), std::inserter(res, res.end()));
   return res;
 }
 
-std::set<int> operator-(const std::set<int> &s1, const std::set<int> &s2) {
+std::set<int> hoax::operator-(const std::set<int> &s1, const std::set<int> &s2) {
   std::set<int> res = {};
   std::set_difference(s1.begin(), s1.end(), s2.begin(), s2.end(), std::inserter(res, res.end()));
   return res;
 }
 
-bool contains(const std::set<int> *set, const int value) {
+bool hoax::contains(const std::set<int> *set, const int value) {
     return set->find(value) != set->end();
 }
 
-std::ostream &operator<<(std::ostream &os, const std::set<int> &s) {
+std::ostream &hoax::operator<<(std::ostream &os, const std::set<int> &s) {
   std::set<int>::iterator it;
   os << "{";
   for (it = s.begin(); it != s.end(); it++) {
@@ -75,4 +75,13 @@ std::ostream &operator<<(std::ostream &os, const std::set<int> &s) {
   os << "}";
 
   return os;
+}
+
+void hoax::to_dot(const std::filesystem::path &path_in, const std::filesystem::path &path_out,
+            const spot::twa_graph_ptr aut) {
+    std::string path_out_dot = path_out.string() + path_in.filename().string() + ".dot";
+    std::ofstream dot_of(path_out_dot);
+    if (!dot_of.is_open())
+        throw std::runtime_error("Could not open ofstream to print to dot.");
+    spot::print_dot(dot_of, aut);
 }

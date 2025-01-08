@@ -8,7 +8,7 @@ void test_bdd_var_indexes(const bdd &expr, const int *expect_indexes, const unsi
     /* Explicitly set size > 0, to check that it is correctly changed. */
     assert(size > 0);
 
-    bdd_var_indexes(expr, &indexes, &size);
+    hoax::bdd_var_indexes(expr, &indexes, &size);
 
     /* Either pointer may only be nullptr if both are! */
     assert((indexes == nullptr) == (expect_indexes == nullptr));
@@ -42,52 +42,52 @@ int test_bdd_utils(const spot::twa_graph_ptr aut) {
     /* Test the default return value: always return bddtrue if the expression
       contains no variables. */
     expr = bddtrue;
-    assert(bdd_variables(expr) == bddtrue);
+    assert(hoax::bdd_variables(expr) == bddtrue);
     expr = bddfalse;
-    assert(bdd_variables(expr) == bddtrue);
+    assert(hoax::bdd_variables(expr) == bddtrue);
 
     /* If all variables are used, then all of them are returned.
-      These test cases makes the contrast with `bdd_variablescomp()` explicit. */
+      These test cases makes the contrast with `hoax::bdd_variablescomp()` explicit. */
     expr = all;
-    assert(bdd_variables(expr) == all);
+    assert(hoax::bdd_variables(expr) == all);
 
     /* Find variables for a conjunction with no negations. */
     expr = a & b;
-    assert(bdd_variables(expr) == (a & b));
+    assert(hoax::bdd_variables(expr) == (a & b));
 
     /* Find variables for a conjunction with negations. */
     expr = a & !c;
-    assert(bdd_variables(expr) == (a & c));
+    assert(hoax::bdd_variables(expr) == (a & c));
 
     /* Find variables for a complex expression. */
     expr = (a & !c) | (b & c & a);
-    assert(bdd_variables(expr) == (a & b & c));
+    assert(hoax::bdd_variables(expr) == (a & b & c));
   }
 
   {
     /* Test the default return value: always return bddtrue if the expression
       contains all variables. */
     expr = all;
-    assert(bdd_variablescomp(expr) == bddtrue);
+    assert(hoax::bdd_variablescomp(expr) == bddtrue);
 
     /* If no are used, return a conjunction of all variables.
-      These test cases makes the contrast with `bdd_variables()` explicit. */
+      These test cases makes the contrast with `hoax::bdd_variables()` explicit. */
     expr = bddtrue;
-    assert(bdd_variablescomp(expr) == all);
+    assert(hoax::bdd_variablescomp(expr) == all);
     expr = bddfalse;
-    assert(bdd_variablescomp(expr) == all);
+    assert(hoax::bdd_variablescomp(expr) == all);
 
     /* Find variables for a conjunction with no negations. */
     expr = a & b;
-    assert(bdd_variablescomp(expr) == c);
+    assert(hoax::bdd_variablescomp(expr) == c);
 
     /* Find variables for a conjunction with negations. */
     expr = a & !c;
-    assert(bdd_variablescomp(expr) == b);
+    assert(hoax::bdd_variablescomp(expr) == b);
 
     /* Find variables for a complex expression. */
     expr = (a & !c) | (b & c & a);
-    assert(bdd_variablescomp(expr) == bddtrue);
+    assert(hoax::bdd_variablescomp(expr) == bddtrue);
   }
 
   {

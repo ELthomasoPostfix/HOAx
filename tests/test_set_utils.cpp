@@ -1,6 +1,11 @@
 #include "utils.h"
 #include <iostream>
 
+/* Resolve c++ ADL; this test is not defined in the hoax namespace so it does
+  not have access to the set operators by default. */
+using hoax::operator+;
+using hoax::operator-;
+
 int test_set_utils() {
 
   std::set<int> s1 = {1,    3,    5};
@@ -63,10 +68,10 @@ int test_set_utils() {
 
   {
     /* Test set membership. */
-    assert(!contains(&s1, 0));
-    assert(contains(&s1, 1));
-    assert(!contains(&empty, 0));
-    assert(!contains(&empty, 1));
+    assert(!hoax::contains(&s1, 0));
+    assert(hoax::contains(&s1, 1));
+    assert(!hoax::contains(&empty, 0));
+    assert(!hoax::contains(&empty, 1));
   }
 
   return 0;

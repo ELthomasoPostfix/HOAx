@@ -1,9 +1,10 @@
 #include "hoax.h"
 
-HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
+hoax::HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t &start_t, const clock_t &deadline_t) : start(start_t), deadline(deadline_t) {
     assert(aut != nullptr);
     assert(this->exp == nullptr);
     assert(this->src == nullptr);
+
     this->src = aut;
     this->exp = spot::make_twa_graph(aut->get_dict());
 
@@ -14,20 +15,27 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
     this->exp->new_states(aut->num_states());
 
     bdd controllable = spot::get_synthesis_outputs(aut);
-    bdd uncontrollable = bdd_variablescomp(controllable);
+    bdd uncontrollable = hoax::bdd_variablescomp(controllable);
+
+    /* See spot's `bdd` operation implementations `bdd_exist()`, `quantify(...)`
+       `bdd_existcomp()`, ... in the following section of spot's docs:
+           https://gitlab.lre.epita.fr/spot/spot/-/blob/next/buddy/src/bddop.c#L2212 */
 
     /* All of the states in the automaton belong to the odd player. */
     for (unsigned int state = 0; state < aut->num_states(); state++) {
+
+        this->assert_deadline();
+
         /* Collect all distinct variables of the out edges as a conjunction. */
         bdd outvars = bddtrue;
         for (auto &edge : aut->out(state))
-        outvars &= bdd_variables(edge.cond);
+        outvars &= hoax::bdd_variables(edge.cond);
         /* Determine the uncontrollable out variables as a conjunction. */
         bdd unc_uvars = bdd_restrict(outvars, controllable);
 
         int *indexes = nullptr;
         unsigned int size = 0;
-        bdd_var_indexes(unc_uvars, &indexes, &size);
+        hoax::bdd_var_indexes(unc_uvars, &indexes, &size);
 
         /* Generate all possible evaluations of the uncontrollable vars.
             Every integer in [0, 2^k] for k uncontrollable variables
@@ -96,7 +104,7 @@ HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut) {
     std::fill(state_player->begin() + this->src->num_states(), state_player->end(), false);
 }
 
-void HOAxParityTwA::set_state_names() {
+void hoax::HOAxParityTwA::set_state_names() {
     auto names = this->exp->get_or_set_named_prop<std::vector<std::string>>("state-names");
     names->resize(this->exp->num_states());
 
@@ -108,14 +116,14 @@ void HOAxParityTwA::set_state_names() {
         (*names)[i] = (state_players[i] ? "A" : "E") + std::to_string(i);
 }
 
-std::set<int> HOAxParityTwA::get_all_states() const {
+std::set<int> hoax::HOAxParityTwA::get_all_states() const {
     std::set<int> states;
     for (unsigned int i = 0; i < this->exp->num_states(); i++)
         states.insert(i);
     return states;
 }
 
-std::set<int> HOAxParityTwA::get_even_states() const {
+std::set<int> hoax::HOAxParityTwA::get_even_states() const {
     std::set<int> states;
     auto state_players = spot::get_state_players(this->exp);
     for (unsigned int i = 0; i < this->exp->num_states(); i++)
@@ -124,7 +132,7 @@ std::set<int> HOAxParityTwA::get_even_states() const {
     return states;
 }
 
-std::set<int> HOAxParityTwA::get_odd_states() const {
+std::set<int> hoax::HOAxParityTwA::get_odd_states() const {
     std::set<int> states;
     auto state_players = spot::get_state_players(this->exp);
     for (unsigned int i = 0; i < this->exp->num_states(); i++)
@@ -133,18 +141,25 @@ std::set<int> HOAxParityTwA::get_odd_states() const {
     return states;
 }
 
-void zielonka(
+void hoax::HOAxParityTwA::assert_deadline() const {
+  const clock_t now = clock();
+  if (now <= this->deadline)
+    return;
+
+  std::string sruntime = std::to_string((now - this->start) / (float)CLOCKS_PER_SEC);
+  std::string sruntime_max = std::to_string((this->deadline - this->start) / (float)CLOCKS_PER_SEC);
+  throw std::runtime_error("Runtime (" + sruntime + "s) exceeds max runtime (" + sruntime_max + "s).");
+}
+
+void hoax::zielonka(
     std::set<int> *W0,
     std::set<int> *W1,
     const std::set<int> *vertices,
     const std::set<int> *vertices_even,
-    const spot::twa_graph_ptr aut,
+    const HOAxParityTwA &aut,
     const bool parity_max) {
 
-
-    // TODO: The zielonka algorithm is state-based, but the eHOA benchmarks
-    //       are exclusively transition-based!
-    //   ==> how to handle this?
+    aut.assert_deadline();
 
     // The sets W0 and W1 are output params, they should be empty initially.
     assert(W0->empty());
@@ -165,8 +180,8 @@ void zielonka(
     // The min/max priority, depending on the parity condition.
     unsigned int m = parity_max ? 0 : INT_MAX;
     for (int vertex : *vertices_even) {
-        m = parity_max ? std::max(m, priority(aut, vertex, parity_max)) :
-                         std::min(m, priority(aut, vertex, parity_max));
+        m = parity_max ? std::max(m, hoax::priority(aut.exp, vertex, parity_max)) :
+                         std::min(m, hoax::priority(aut.exp, vertex, parity_max));
     }
     // The player to support.
     const int player = m % 2;
@@ -175,7 +190,7 @@ void zielonka(
     // The vertices matching the extremum priority.
     std::set<int> M;
     for (int vertex : *vertices_even) {
-        if (priority(aut, vertex, parity_max) == m)
+        if (hoax::priority(aut.exp, vertex, parity_max) == m)
             M.insert(vertex);
     }
 
@@ -186,7 +201,7 @@ void zielonka(
 
     const int depth_max = vertices->size();
     std::set<int> R = {};
-    attractor(&R, &vertices_odd, vertices_even, aut, &M, depth_max, player);
+    hoax::attractor(&R, &vertices_odd, vertices_even, aut, &M, depth_max, player);
 
 
     auto Wcurr_p0 = player == PEVEN ? W0 : W1;  // W_i     = i == 0 ? W0 : W1
@@ -200,7 +215,7 @@ void zielonka(
         // Recursively solve for (G \ R)
         std::set<int> vertices_rem = *vertices - R;
         std::set<int> vertices_even_rem = *vertices_even - R;
-        zielonka(&Wcurr_p1, &Wprev_p1, &vertices_rem, &vertices_even_rem, aut, parity_max);
+        hoax::zielonka(&Wcurr_p1, &Wprev_p1, &vertices_rem, &vertices_even_rem, aut, parity_max);
     }
 
     if (Wprev_p1.empty()) {
@@ -211,7 +226,7 @@ void zielonka(
     } else {
         const int player_other = (player + 1) % 2;
         std::set<int> S = {};
-        attractor(&S, &vertices_odd, vertices_even, aut, &Wprev_p1, depth_max, player_other);
+        hoax::attractor(&S, &vertices_odd, vertices_even, aut, &Wprev_p1, depth_max, player_other);
 
         // The order of the result sets depends on the current player, i.
         std::set<int> Wcurr_p2 = {};  // W''_i
@@ -221,7 +236,7 @@ void zielonka(
             // Recursively solve for (G \ S)
             std::set<int> vertices_rem = *vertices - S;
             std::set<int> vertices_even_rem = *vertices_even - S;
-            zielonka(&Wcurr_p2, &Wprev_p2, &vertices_rem, &vertices_even_rem, aut, parity_max);
+            hoax::zielonka(&Wcurr_p2, &Wprev_p2, &vertices_rem, &vertices_even_rem, aut, parity_max);
         }
 
         // W_i = W''_i
@@ -231,11 +246,11 @@ void zielonka(
     }
 }
 
-void attractor(
+void hoax::attractor(
     std::set<int> *attr,
     const std::set<int> *vertices_odd,
     const std::set<int> *vertices_even,
-    const spot::twa_graph_ptr aut,
+    const HOAxParityTwA &aut,
     const std::set<int> *T,
     const int k,
     const int i) {
@@ -249,15 +264,17 @@ void attractor(
     for (unsigned int it = 0; it < k; it++) {
         std::set<int> attr_rec;
 
+        aut.assert_deadline();
+
         /* Add all vertices where the player i can choose to enter the
             attractor set themselves. */
         vertices = (i == PEVEN) ? vertices_even : vertices_odd;
         for (const int vertex : *vertices) {
-            for (auto edge : aut->out(vertex)) {
+            for (auto edge : aut.exp->out(vertex)) {
                 // The edge is an out edge of vertex, so vertex should be the src
                 assert(vertex == edge.src);
 
-                if (contains(attr, edge.dst)) {
+                if (hoax::contains(attr, edge.dst)) {
                     attr_rec.insert(vertex);
                     break;
                 }
@@ -269,11 +286,11 @@ void attractor(
         vertices = (i == PEVEN) ? vertices_odd : vertices_even;
         for (const int vertex : *vertices) {
             bool can_avoid_attractors = true;
-            for (auto edge : aut->out(vertex)) {
+            for (auto edge : aut.exp->out(vertex)) {
                 // The edge is an out edge of vertex, so vertex should be the src
                 assert(vertex == edge.src);
 
-                if (!contains(attr, edge.dst)) {
+                if (!hoax::contains(attr, edge.dst)) {
                     can_avoid_attractors = false;
                     break;
                 }
@@ -293,7 +310,7 @@ void attractor(
     }
 }
 
-unsigned int priority(const spot::acc_cond::mark_t &mark, const bool parity_max) {
+unsigned int hoax::priority(const spot::acc_cond::mark_t &mark, const bool parity_max) {
     unsigned int p;
     if (parity_max)
         p = mark.max_set();
@@ -308,15 +325,15 @@ unsigned int priority(const spot::acc_cond::mark_t &mark, const bool parity_max)
     return p - 1;
 }
 
-unsigned int priority(const spot::twa_graph_ptr aut, const unsigned int state, const bool parity_max) {
+unsigned int hoax::priority(const spot::twa_graph_ptr aut, const unsigned int state, const bool parity_max) {
     unsigned int p = parity_max ? 0 : UINT_MAX;
     bool edges_empty = true;
     for (auto &edge : aut->out(state)) {
         edges_empty = false;
         if (parity_max)
-            p = std::max(p, priority(edge.acc, parity_max));
+            p = std::max(p, hoax::priority(edge.acc, parity_max));
         else
-            p = std::min(p, priority(edge.acc, parity_max));
+            p = std::min(p, hoax::priority(edge.acc, parity_max));
     }
     /* Sink nodes, vertices with no outgoing edges, are not allowed! */
     assert(!edges_empty);
