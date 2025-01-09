@@ -110,6 +110,16 @@ bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
     std::set<int> vertices = this->get_all_states();
     std::set<int> vertices_even = this->get_even_states();
 
+    /* Pre-compute the transition-based priorities,
+        to avoid computing them dynamically. */
+    auto priorities = this->exp->get_or_set_named_prop<std::vector<unsigned int>>(PROP_HOAX_PRIOR);
+    auto state_player = this->exp->get_or_set_named_prop<std::vector<bool>>(PROP_SPOT_STATE_PLAYER);
+    /* Initialize every state to the lowest/least important priority. */
+    priorities->resize(this->exp->num_states(), parity_max ? INT_MIN : INT_MAX);
+    for (unsigned int state = 0; state < this->exp->num_states(); state++)
+        if (state_player->at(state) == PEVEN)
+            priorities->at(state) = priority(this->exp, state, parity_max);
+
     hoax::zielonka(&W0, &W1, &vertices, &vertices_even, *this, parity_max);
 
     /* Setup the hoax counterpart to spot's "state-winner" named prop. */
@@ -193,10 +203,6 @@ void hoax::zielonka(
     const HOAxParityTwA &aut,
     const bool parity_max) {
 
-    // TODO: If parity max, then you also need two SWAP THE SETS Wi and Wi-1????
-    // ==> Because zielonka is based around parity min, so to adapt it to max
-    //     you need to also swap those sets?
-
     aut.assert_deadline();
 
     // The sets W0 and W1 are output params, they should be empty initially.
@@ -208,12 +214,14 @@ void hoax::zielonka(
         return;
 
 
-    /* (1) Support a player based on the extremum priority's parity. */
+
+    /* Support a player based on the extremum priority's parity. */
+    auto priorities = aut.exp->get_or_set_named_prop<std::vector<unsigned int>>(PROP_HOAX_PRIOR);
     // The min/max priority, depending on the parity condition.
-    unsigned int m = parity_max ? 0 : INT_MAX;
+    unsigned int m = parity_max ? 0 : UINT_MAX;
     for (int vertex : *vertices_even) {
-        m = parity_max ? std::max(m, hoax::priority(aut.exp, vertex, parity_max)) :
-                         std::min(m, hoax::priority(aut.exp, vertex, parity_max));
+        m = parity_max ? std::max(m, priorities->at(vertex)) :
+                         std::min(m, priorities->at(vertex));
     }
     // The player to support.
     const int player = m % 2;
@@ -222,7 +230,7 @@ void hoax::zielonka(
     // The vertices matching the extremum priority.
     std::set<int> M;
     for (int vertex : *vertices_even)
-        if (hoax::priority(aut.exp, vertex, parity_max) == m)
+        if (priorities->at(vertex) == m)
             M.insert(vertex);
 
 

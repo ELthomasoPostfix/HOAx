@@ -26,6 +26,7 @@ namespace hoax {
 
     /* Define hoax named property constants. */
     #define PROP_HOAX_STATE_WINNER "state-winner-hoax"
+    #define PROP_HOAX_PRIOR "priority-hoax"
 
     /** An interface for expanding a parity automaton into a parity arena.
 
