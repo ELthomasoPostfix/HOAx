@@ -237,6 +237,7 @@ void hoax::zielonka(
 
     auto Wcurr_p0 = player == PEVEN ? W0 : W1;  // W_i     = i == 0 ? W0 : W1
     auto Wprev_p0 = player == PEVEN ? W1 : W0;  // W_(i-1) = i == 0 ? W1 : W0
+    if (parity_max) std::swap(Wcurr_p0, Wprev_p0);
 
     // The order of the result sets depends on the current player, i.
     std::set<int> Wcurr_p1 = {};  // W'_i
@@ -248,6 +249,7 @@ void hoax::zielonka(
         std::set<int> vertices_even_rem = *vertices_even - R;
         hoax::zielonka(&Wcurr_p1, &Wprev_p1, &vertices_rem, &vertices_even_rem, aut, parity_max);
     }
+    if (parity_max) std::swap(Wcurr_p1, Wprev_p1);
 
     if (Wprev_p1.empty()) {
         // W_i = W'_i U R
@@ -269,6 +271,7 @@ void hoax::zielonka(
             std::set<int> vertices_even_rem = *vertices_even - S;
             hoax::zielonka(&Wcurr_p2, &Wprev_p2, &vertices_rem, &vertices_even_rem, aut, parity_max);
         }
+        if (parity_max) std::swap(Wcurr_p2, Wprev_p2);
 
         // W_i = W''_i
         *Wcurr_p0 = std::move(Wcurr_p2);
