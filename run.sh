@@ -15,6 +15,7 @@ fi
 if [[ $* == *--brief* ]]
 then
     ./builddir/hoax -v -b input/parity/parity/mucalc_mc/*.ehoa
+    ./builddir/hoax -v -b input/hoa_benchmarks/model_paper-2.property4-*.ehoa
 else
     ./builddir/hoax -v input/parity/parity/keiren/*.ehoa
     ./builddir/hoax -v input/parity/parity/mucalc_mc/*.ehoa

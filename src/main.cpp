@@ -19,7 +19,7 @@ const std::filesystem::path DEFAULT_DIR_IN("input/");
 
 /** The maximum runtime allowed for solving a parity game, in seconds.
     Quit early if this deadline is exceeded. */
-const unsigned int RUNTIME_MAX_SEC = 30;
+const unsigned int RUNTIME_MAX_SEC = 300;
 
 
 int main(int argc, char *argv[]) {
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
      */
     bool pmax = true;  // default = max
     bool podd = false; // default = even
-    if (!(aut->acc().is_parity(pmax, podd) || aut->acc().is_f())) {
+    if (!(aut->acc().is_parity(pmax, podd, false) || aut->acc().is_f() || aut->acc().is_t())) {
       printf("WARN\tNON-PARITY TwA? '%s'\t%s\n", aut->acc().name().c_str(), path_in.c_str());
       continue;
     }
@@ -183,29 +183,55 @@ int main(int argc, char *argv[]) {
       hoax::HOAxParityTwA hptwa = hoax::HOAxParityTwA(aut, start, deadline);
       hptwa.set_state_names();
 
-      if (flag_verbose) {
-        hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.src);
-        hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.exp);
-      }
-
       // Call my own implementation of a parity game solver.
-      const bool SOL_COMPUTED = hptwa.solve_parity_game(pmax);
+      // If the player we expect to win equals the player that actually wins,
+      // then the game is realizable.
+      const bool SOL_COMPUTED = podd == hptwa.solve_parity_game(pmax);
       const std::string SOL_STR_COMPUTED = SOL_COMPUTED ? "REAL" : "UNREAL";
+
+      if (flag_verbose) {
+        // hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.src);
+        // hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.exp);
+      }
 
       if (flag_baseline) {
         /* Compare against spot's implementation as a baseline.
-          Spot's `solve_parity_game()` function explicitly solves for
-          a deterministic max odd parity automaton?
 
-          See spot's docs: https://spot.lre.epita.fr/doxygen/group__games.html#ga5282822f1079cdefc43a1d1b0c83a024
+          Spot's docs state about the arena input that "The arena is a
+          deterministic max odd parity automaton with a 'state-player'
+          property." See
+              https://spot.lre.epita.fr/doxygen/group__games.html#ga5282822f1079cdefc43a1d1b0c83a024
+          However, if an automaton's acceptance condition is not "parity max odd",
+          then the source code for `spot::solve_parity_game()` actually internally
+          transforms the automaton to "parity max even", and solving for "parity max even"
+          in the transformed automaton is equivalent to solving the original acceptance
+          condition in the original/untransformed automaton.
+          That is to say, spot's `spot::solve_parity_game()` outputs which player wins
+          in the initial state (false if even wins, true if odd wins), regardless of the
+          acceptance condition on the original automaton, and without intervention of
+          the caller.
+            https://gitlab.lre.epita.fr/spot/spot/-/blob/next/spot/twaalgos/game.cc#L312
         */
-        const bool SOL_ACTUAL = !spot::solve_parity_game(hptwa.exp);
+        const bool SOL_ACTUAL = podd == spot::solve_parity_game(hptwa.exp);
         const std::string SOL_STR_ACTUAL = SOL_ACTUAL ? "REAL" : "UNREAL";
 
         if (flag_verbose) {
           auto state_winners_spot = hptwa.exp->get_or_set_named_prop<std::vector<bool>>(PROP_SPOT_STATE_WINNER);
           auto state_winners_hoax = hptwa.exp->get_or_set_named_prop<std::vector<bool>>(PROP_HOAX_STATE_WINNER);
-          std::cout << "Winners(spot) == Winners(hoax) : " << (*state_winners_spot == *state_winners_hoax) << std::endl;
+          const bool same_winners = (*state_winners_spot == *state_winners_hoax);
+          std::string diagnostic = "";
+
+          if (!same_winners) {
+            unsigned int nr_diffs = 0;
+            for (unsigned int i = 0; i < state_winners_spot->size(); i++)
+              nr_diffs += (state_winners_spot->at(i) != state_winners_hoax->at(i));
+            diagnostic += "#differences / #states = " + std::to_string(nr_diffs) +
+              " / " + std::to_string(state_winners_spot->size());
+            if (nr_diffs == state_winners_spot->size())
+              diagnostic += " (Spot and HOAx have inverted winners!)";
+          }
+
+          std::cout << "Winners(spot) == Winners(hoax) : " << same_winners << "\t" << diagnostic << std::endl;
         }
 
         const std::string sodd = podd ? "ODD" : "EVEN";

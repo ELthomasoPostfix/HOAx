@@ -63,12 +63,20 @@ namespace hoax {
         */
         HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t &start_t, const clock_t &deadline_t);
 
-        /** Solve a "parity min/max even" game.
+        /** Solve a "parity min/max odd" game.
+
+            i.e. the actual arena may have any acceptance condition,
+            but the algorithm checks if the odd player can win the
+            game from the initial state, given the additional min/max
+            parity parameter.
 
             @param[in] parity_max If true, then solve for the "parity max" condition.
                                   Else solve for the "parity min" condition.
-            @return true iff. the "even" player wins from the initial state.
-                    Else false, i.e. the "odd" player wins from the initial state.
+            @return true iff. the "odd" player wins from the initial state.
+                    false else, i.e. the "even" player wins from the initial state.
+                    Since the "odd" player is represented by "1" or "true" and
+                    the "even" player is represented by "0" or "false",
+                    the return value is effectively the winning player.
          */
         bool solve_parity_game(const bool parity_max) const;
 

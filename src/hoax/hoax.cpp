@@ -112,7 +112,7 @@ bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
 
     hoax::zielonka(&W0, &W1, &vertices, &vertices_even, *this, parity_max);
 
-    /* Setup the hoax's counterpart to spot's "state-winner" named prop. */
+    /* Setup the hoax counterpart to spot's "state-winner" named prop. */
     auto state_winners_hoax = this->exp->get_or_set_named_prop<std::vector<bool>>(PROP_HOAX_STATE_WINNER);
     /* Initialize the hoax state winners to the "even player" winning by default. */
     state_winners_hoax->resize(this->exp->num_states(), PEVEN);
@@ -134,8 +134,8 @@ bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
         throw std::runtime_error("Exactly one player should win the parity game, but EVEN " + sewin + " and ODD " + sowin);
     }
 
-    /* Always solve for "parity even". */
-    return even_wins;
+    /* Always solve for "parity odd". */
+    return odd_wins;
 }
 
 void hoax::HOAxParityTwA::set_state_names() {
@@ -193,6 +193,10 @@ void hoax::zielonka(
     const HOAxParityTwA &aut,
     const bool parity_max) {
 
+    // TODO: If parity max, then you also need two SWAP THE SETS Wi and Wi-1????
+    // ==> Because zielonka is based around parity min, so to adapt it to max
+    //     you need to also swap those sets?
+
     aut.assert_deadline();
 
     // The sets W0 and W1 are output params, they should be empty initially.
@@ -200,14 +204,8 @@ void hoax::zielonka(
     assert(W1->empty());
 
     /* Base case: no more vertices remain to be checked. */
-    if (vertices_even->empty()) {
-        /* Any odd vertices not assigned to a winnable set by now are
-            "odd player" vertices" with no outgoing edges, i.e. sink nodes.
-            We assumed no sink nodes existed! */
-        if (!vertices->empty())
-            throw std::runtime_error("Sink nodes detected. No sink nodes are allowed.");
+    if (vertices_even->empty())
         return;
-    }
 
 
     /* (1) Support a player based on the extremum priority's parity. */
@@ -223,10 +221,9 @@ void hoax::zielonka(
 
     // The vertices matching the extremum priority.
     std::set<int> M;
-    for (int vertex : *vertices_even) {
+    for (int vertex : *vertices_even)
         if (hoax::priority(aut.exp, vertex, parity_max) == m)
             M.insert(vertex);
-    }
 
 
     // All remaining odd/Adam vertices.
