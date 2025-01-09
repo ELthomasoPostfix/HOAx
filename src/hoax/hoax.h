@@ -63,7 +63,7 @@ namespace hoax {
         */
         HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t &start_t, const clock_t &deadline_t);
 
-        /** Solve a "min/max even" parity game.
+        /** Solve a "parity min/max even" game.
 
             @param[in] parity_max If true, then solve for the "parity max" condition.
                                   Else solve for the "parity min" condition.

@@ -29,7 +29,7 @@ hoax::HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t 
         /* Collect all distinct variables of the out edges as a conjunction. */
         bdd outvars = bddtrue;
         for (auto &edge : aut->out(state))
-        outvars &= hoax::bdd_variables(edge.cond);
+            outvars &= hoax::bdd_variables(edge.cond);
         /* Determine the uncontrollable out variables as a conjunction. */
         bdd unc_uvars = bdd_restrict(outvars, controllable);
 
