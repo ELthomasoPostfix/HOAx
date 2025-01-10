@@ -126,6 +126,8 @@ namespace hoax {
         of all "odd" resp. "even" states in the entire automaton.
 
         @param[out] attr The attractor set
+        @param[in] vertices The set of all states in the parity arena
+                            which to include in the attractor computation
         @param[in] vertices_odd The set of "odd player states" in the parity arena
                                 which to include in the attractor computation
         @param[in] vertices_odd The set of "even player states" in the parity arena
@@ -137,6 +139,7 @@ namespace hoax {
     */
     void attractor(
         std::set<int> *attr,
+        const std::set<int> *vertices,
         const std::set<int> *vertices_odd,
         const std::set<int> *vertices_even,
         const HOAxParityTwA &aut,

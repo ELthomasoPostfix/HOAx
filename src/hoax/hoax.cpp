@@ -134,6 +134,8 @@ bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
     /* Overwrite the "odd player" winning states. */
     for (const auto winner_odd : W1)
         (*state_winners_hoax)[winner_odd] = PODD;
+    for (const auto winner_even : W0)
+        (*state_winners_hoax)[winner_even] = PEVEN;
 
     // The initial/start state.
     const unsigned int init_state = this->exp->get_init_state_number();
@@ -237,13 +239,14 @@ void hoax::zielonka(
         if (priorities->at(vertex) == m)
             M.insert(vertex);
 
+
     // All remaining odd/Adam vertices.
     std::set<int> vertices_odd = *vertices - *vertices_even;
 
 
     const int depth_max = vertices->size();
     std::set<int> R = {};
-    hoax::attractor(&R, &vertices_odd, vertices_even, aut, &M, depth_max, player);
+    hoax::attractor(&R, vertices, &vertices_odd, vertices_even, aut, &M, depth_max, player);
 
 
     /* Determine W_i and W_(i-1) based on the chosen player. */
@@ -270,11 +273,10 @@ void hoax::zielonka(
         *Wcurr_p0 = Wcurr_p1 + R;
         // W_(i-1) = emptyset
         assert(Wprev_p0->empty());
-
     } else {
         const int player_other = (player + 1) % 2;
         std::set<int> S = {};
-        hoax::attractor(&S, &vertices_odd, vertices_even, aut, &Wprev_p1, depth_max, player_other);
+        hoax::attractor(&S, vertices, &vertices_odd, vertices_even, aut, &Wprev_p1, depth_max, player_other);
 
 
         // The order of the result sets depends on the current player, i.
@@ -289,7 +291,7 @@ void hoax::zielonka(
         /* The arguments W0 and W1 correspond to the even resp. odd player.
             But zielonka works with W_i and W_(i-1) instead, so swap the sets
             based on which player we support. */
-        if (player == PODD) std::swap(Wcurr_p2, Wprev_p2);
+        if (player == PEVEN) std::swap(Wcurr_p2, Wprev_p2);
 
 
         // W_i = W''_i
@@ -301,6 +303,7 @@ void hoax::zielonka(
 
 void hoax::attractor(
     std::set<int> *attr,
+    const std::set<int> *vertices_all,
     const std::set<int> *vertices_odd,
     const std::set<int> *vertices_even,
     const HOAxParityTwA &aut,
@@ -324,6 +327,10 @@ void hoax::attractor(
         vertices = (i == PEVEN) ? vertices_even : vertices_odd;
         for (const int vertex : *vertices) {
             for (auto edge : aut.exp->out(vertex)) {
+                /* We implicitly remove edges from the arena; exclude edges
+                    that are not part of the divide-and-conquer sub-arena. */
+                if (!hoax::contains(vertices_all, edge.dst))
+                    continue;
                 // The edge is an out edge of vertex, so vertex should be the src
                 assert(vertex == edge.src);
 
@@ -338,17 +345,22 @@ void hoax::attractor(
             enter the attractor set. */
         vertices = (i == PEVEN) ? vertices_odd : vertices_even;
         for (const int vertex : *vertices) {
-            bool can_avoid_attractors = true;
+            bool forced_into_attractors = true;
             for (auto edge : aut.exp->out(vertex)) {
+                /* We implicitly remove edges from the arena; exclude edges
+                    that are not part of the divide-and-conquer sub-arena. */
+                if (!hoax::contains(vertices_all, edge.dst))
+                    continue;
+
                 // The edge is an out edge of vertex, so vertex should be the src
                 assert(vertex == edge.src);
 
                 if (!hoax::contains(attr, edge.dst)) {
-                    can_avoid_attractors = false;
+                    forced_into_attractors = false;
                     break;
                 }
             }
-            if (can_avoid_attractors)
+            if (forced_into_attractors)
                 attr_rec.insert(vertex);
         }
 
