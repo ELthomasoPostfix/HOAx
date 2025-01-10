@@ -219,7 +219,6 @@ void hoax::zielonka(
         return;
 
 
-
     /* Support a player based on the extremum priority's parity. */
     auto priorities = aut.exp->get_or_set_named_prop<std::vector<int>>(PROP_HOAX_PRIOR);
     // The min/max priority, depending on the parity condition.
@@ -247,40 +246,51 @@ void hoax::zielonka(
     hoax::attractor(&R, &vertices_odd, vertices_even, aut, &M, depth_max, player);
 
 
+    /* Determine W_i and W_(i-1) based on the chosen player. */
     auto Wcurr_p0 = player == PEVEN ? W0 : W1;  // W_i     = i == 0 ? W0 : W1
     auto Wprev_p0 = player == PEVEN ? W1 : W0;  // W_(i-1) = i == 0 ? W1 : W0
+
 
     // The order of the result sets depends on the current player, i.
     std::set<int> Wcurr_p1 = {};  // W'_i
     std::set<int> Wprev_p1 = {};  // W'_(i-1)
-
     {
         // Recursively solve for (G \ R)
         std::set<int> vertices_rem = *vertices - R;
         std::set<int> vertices_even_rem = *vertices_even - R;
         hoax::zielonka(&Wcurr_p1, &Wprev_p1, &vertices_rem, &vertices_even_rem, aut, parity_max);
     }
+    /* The arguments W0 and W1 correspond to the even resp. odd player.
+        But zielonka works with W_i and W_(i-1) instead, so swap the sets
+        based on which player we support. */
+    if (player == PODD) std::swap(Wcurr_p1, Wprev_p1);
 
     if (Wprev_p1.empty()) {
         // W_i = W'_i U R
         *Wcurr_p0 = Wcurr_p1 + R;
         // W_(i-1) = emptyset
         assert(Wprev_p0->empty());
+
     } else {
         const int player_other = (player + 1) % 2;
         std::set<int> S = {};
         hoax::attractor(&S, &vertices_odd, vertices_even, aut, &Wprev_p1, depth_max, player_other);
 
+
         // The order of the result sets depends on the current player, i.
         std::set<int> Wcurr_p2 = {};  // W''_i
         std::set<int> Wprev_p2 = {};  // W''_(i-1)
-
         {
             // Recursively solve for (G \ S)
             std::set<int> vertices_rem = *vertices - S;
             std::set<int> vertices_even_rem = *vertices_even - S;
             hoax::zielonka(&Wcurr_p2, &Wprev_p2, &vertices_rem, &vertices_even_rem, aut, parity_max);
         }
+        /* The arguments W0 and W1 correspond to the even resp. odd player.
+            But zielonka works with W_i and W_(i-1) instead, so swap the sets
+            based on which player we support. */
+        if (player == PODD) std::swap(Wcurr_p2, Wprev_p2);
+
 
         // W_i = W''_i
         *Wcurr_p0 = std::move(Wcurr_p2);
