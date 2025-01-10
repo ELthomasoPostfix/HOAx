@@ -23,9 +23,6 @@ hoax::HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t 
 
     /* All of the states in the automaton belong to the odd player. */
     for (unsigned int state = 0; state < aut->num_states(); state++) {
-
-        this->assert_deadline();
-
         /* Collect all distinct variables of the out edges as a conjunction. */
         bdd outvars = bddtrue;
         for (auto &edge : aut->out(state))
@@ -47,6 +44,9 @@ hoax::HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t 
                 111  =>  a & b & c
         */
         for (int eval_nr = 0; eval_nr < std::pow(2, size); eval_nr++) {
+
+            this->assert_deadline();
+
             bdd eval = bddtrue;
             for (unsigned int shift = 0; indexes && (shift < size); shift++) {
                 bdd var = bdd_ithvar(indexes[shift]);
@@ -110,12 +110,17 @@ bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
     std::set<int> vertices = this->get_all_states();
     std::set<int> vertices_even = this->get_even_states();
 
-    /* Pre-compute the transition-based priorities,
-        to avoid computing them dynamically. */
-    auto priorities = this->exp->get_or_set_named_prop<std::vector<unsigned int>>(PROP_HOAX_PRIOR);
+    /* Pre-compute the transition-based priorities. */
+    auto priorities = this->exp->get_or_set_named_prop<std::vector<int>>(PROP_HOAX_PRIOR);
     auto state_player = this->exp->get_or_set_named_prop<std::vector<bool>>(PROP_SPOT_STATE_PLAYER);
-    /* Initialize every state to the lowest/least important priority. */
-    priorities->resize(this->exp->num_states(), parity_max ? INT_MIN : INT_MAX);
+    /* The default priorities must be odd, since we only update the "even player" priorities. */
+    const int priority_min = INT_MIN + 1;
+    const int priority_max = INT_MAX;
+    assert(abs(priority_min % 2) == 1 && (priority_max % 2) == 1);
+    /* Initialize every state to the least significant priority. */
+    priorities->resize(this->exp->num_states(), parity_max ? priority_min : priority_max);
+    /* Only the "even player" states have actual priorities, by construction
+      of the expanded automaton. */
     for (unsigned int state = 0; state < this->exp->num_states(); state++)
         if (state_player->at(state) == PEVEN)
             priorities->at(state) = priority(this->exp, state, parity_max);
@@ -216,15 +221,15 @@ void hoax::zielonka(
 
 
     /* Support a player based on the extremum priority's parity. */
-    auto priorities = aut.exp->get_or_set_named_prop<std::vector<unsigned int>>(PROP_HOAX_PRIOR);
+    auto priorities = aut.exp->get_or_set_named_prop<std::vector<int>>(PROP_HOAX_PRIOR);
     // The min/max priority, depending on the parity condition.
-    unsigned int m = parity_max ? 0 : UINT_MAX;
+    int m = parity_max ? INT_MIN : INT_MAX;
     for (int vertex : *vertices_even) {
         m = parity_max ? std::max(m, priorities->at(vertex)) :
                          std::min(m, priorities->at(vertex));
     }
     // The player to support.
-    const int player = m % 2;
+    const int player = std::abs(m) % 2;
 
 
     // The vertices matching the extremum priority.
@@ -232,7 +237,6 @@ void hoax::zielonka(
     for (int vertex : *vertices_even)
         if (priorities->at(vertex) == m)
             M.insert(vertex);
-
 
     // All remaining odd/Adam vertices.
     std::set<int> vertices_odd = *vertices - *vertices_even;
@@ -245,7 +249,6 @@ void hoax::zielonka(
 
     auto Wcurr_p0 = player == PEVEN ? W0 : W1;  // W_i     = i == 0 ? W0 : W1
     auto Wprev_p0 = player == PEVEN ? W1 : W0;  // W_(i-1) = i == 0 ? W1 : W0
-    if (parity_max) std::swap(Wcurr_p0, Wprev_p0);
 
     // The order of the result sets depends on the current player, i.
     std::set<int> Wcurr_p1 = {};  // W'_i
@@ -257,7 +260,6 @@ void hoax::zielonka(
         std::set<int> vertices_even_rem = *vertices_even - R;
         hoax::zielonka(&Wcurr_p1, &Wprev_p1, &vertices_rem, &vertices_even_rem, aut, parity_max);
     }
-    if (parity_max) std::swap(Wcurr_p1, Wprev_p1);
 
     if (Wprev_p1.empty()) {
         // W_i = W'_i U R
@@ -279,7 +281,6 @@ void hoax::zielonka(
             std::set<int> vertices_even_rem = *vertices_even - S;
             hoax::zielonka(&Wcurr_p2, &Wprev_p2, &vertices_rem, &vertices_even_rem, aut, parity_max);
         }
-        if (parity_max) std::swap(Wcurr_p2, Wprev_p2);
 
         // W_i = W''_i
         *Wcurr_p0 = std::move(Wcurr_p2);
@@ -352,8 +353,8 @@ void hoax::attractor(
     }
 }
 
-unsigned int hoax::priority(const spot::acc_cond::mark_t &mark, const bool parity_max) {
-    unsigned int p;
+int hoax::priority(const spot::acc_cond::mark_t &mark, const bool parity_max) {
+    int p;
     if (parity_max)
         p = mark.max_set();
     else
@@ -361,14 +362,12 @@ unsigned int hoax::priority(const spot::acc_cond::mark_t &mark, const bool parit
 
     /* Spot's `mark_t.max_set()` and `mark_t.min_set()` return 0 when
       an edge is not part of any transition set.
-      ==> A transition MUST be part of some acceptance set!
-    */
-    assert(p > 0);
+      ==> Fallthrough priority is -1. */
     return p - 1;
 }
 
-unsigned int hoax::priority(const spot::twa_graph_ptr aut, const unsigned int state, const bool parity_max) {
-    unsigned int p = parity_max ? 0 : UINT_MAX;
+int hoax::priority(const spot::twa_graph_ptr aut, const unsigned int state, const bool parity_max) {
+    int p = parity_max ? INT_MIN : INT_MAX;
     bool edges_empty = true;
     for (auto &edge : aut->out(state)) {
         edges_empty = false;
