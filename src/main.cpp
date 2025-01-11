@@ -237,9 +237,9 @@ int main(int argc, char *argv[]) {
         const std::string sodd = podd ? "ODD" : "EVEN";
         const std::string smax = pmax ? "MAX" : "MIN";
 
-        printf ("<%s, %s> computed=%s actual=%s\t%s\n",
+        printf ("<%s, %s> %s %s\t%s\t%s\n",
           smax.c_str(), sodd.c_str(), SOL_STR_COMPUTED.c_str(),
-          SOL_STR_ACTUAL.c_str(), path_in.c_str());
+          SOL_STR_ACTUAL.c_str(), (std::to_string((clock() - hptwa.start) / (float)CLOCKS_PER_SEC) + "s").c_str(), path_in.c_str());
       }
       else
         printf ("%s\t%s\n",
