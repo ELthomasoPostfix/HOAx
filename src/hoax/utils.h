@@ -65,7 +65,16 @@ namespace hoax {
     std::set<int> operator-(const std::set<int> &s1, const std::set<int> &s2);
 
     /** A wrapper to check membership of a value in a set. */
-    bool contains(const std::set<int> *set, const int value);
+    bool contains(const std::set<int> &set, const int value);
+
+    /** Merge two sets in-place.
+
+        Merge by inserting the contents of the smaller of the two
+        sets into the larger of the two.
+
+        @return The larger set after merging.
+    */
+    std::set<int> &merge(std::set<int> &s1, std::set<int> &s2);
 
     /** Write the set to the given stream. */
     std::ostream &operator<<(std::ostream &os, const std::set<int> &s);

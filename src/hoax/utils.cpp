@@ -60,8 +60,16 @@ std::set<int> hoax::operator-(const std::set<int> &s1, const std::set<int> &s2) 
   return res;
 }
 
-bool hoax::contains(const std::set<int> *set, const int value) {
-    return set->find(value) != set->end();
+bool hoax::contains(const std::set<int> &set, const int value) {
+    return set.find(value) != set.end();
+}
+
+std::set<int> &hoax::merge(std::set<int> &s1, std::set<int> &s2) {
+  std::set<int> &large = s1.size() > s2.size() ? s1 : s2;
+  std::set<int> &small = s1.size() > s2.size() ? s2 : s1;
+
+  large.insert(small.begin(), small.end());
+  return large;
 }
 
 std::ostream &hoax::operator<<(std::ostream &os, const std::set<int> &s) {

@@ -143,8 +143,8 @@ bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
     /* Solving for "parity odd" is the complement of solving for "parity even"
         and vice versa; exactly one of the players must win from the initial
         state. So, explicitly require exactly one player to win. */
-    const bool even_wins = hoax::contains(&W0, init_state);
-    const bool odd_wins = hoax::contains(&W1, init_state);
+    const bool even_wins = hoax::contains(W0, init_state);
+    const bool odd_wins = hoax::contains(W1, init_state);
     if (!(even_wins xor odd_wins)) {
         const std::string sowin = (odd_wins ? "WINS" : "LOSES");
         const std::string sewin = (even_wins ? "WINS" : "LOSES");
@@ -230,8 +230,8 @@ void hoax::zielonka(
                          std::min(m, priorities->at(vertex));
     }
     // The player to support.
-    const int player = std::abs(m) % 2;
-    const int player_other = (player + 1) % 2;
+    const unsigned int player = std::abs(m) % 2;
+    const unsigned int player_other = 1 - player;
     assert((player == PEVEN && player_other == PODD) ||
            (player == PODD  && player_other == PEVEN));
 
@@ -272,7 +272,7 @@ void hoax::zielonka(
 
     if (Wprev_p1.empty()) {
         // W_i = W'_i U R
-        Wcurr_p0 = Wcurr_p1 + R;
+        Wcurr_p0 = std::move(hoax::merge(Wcurr_p1, R));
         // W_(i-1) = emptyset
         assert(Wprev_p0.empty());
     } else {
@@ -298,7 +298,7 @@ void hoax::zielonka(
         // W_i = W''_i
         Wcurr_p0 = std::move(Wcurr_p2);
         // W_(i-1) = W''_(i-1) U S
-        Wprev_p0 = Wprev_p2 + S;
+        Wprev_p0 = std::move(hoax::merge(Wprev_p2, S));
     }
 }
 
@@ -328,12 +328,12 @@ void hoax::attractor(
             for (auto edge : aut.exp->out(vertex)) {
                 /* We implicitly remove edges from the arena; exclude edges
                     that are not part of the divide-and-conquer sub-arena. */
-                if (!hoax::contains(&vertices_all, edge.dst))
+                if (!hoax::contains(vertices_all, edge.dst))
                     continue;
                 // The edge is an out edge of vertex, so vertex should be the src
                 assert(vertex == edge.src);
 
-                if (hoax::contains(&attr, edge.dst)) {
+                if (hoax::contains(attr, edge.dst)) {
                     attr_rec.insert(vertex);
                     break;
                 }
@@ -348,13 +348,13 @@ void hoax::attractor(
             for (auto edge : aut.exp->out(vertex)) {
                 /* We implicitly remove edges from the arena; exclude edges
                     that are not part of the divide-and-conquer sub-arena. */
-                if (!hoax::contains(&vertices_all, edge.dst))
+                if (!hoax::contains(vertices_all, edge.dst))
                     continue;
 
                 // The edge is an out edge of vertex, so vertex should be the src
                 assert(vertex == edge.src);
 
-                if (!hoax::contains(&attr, edge.dst)) {
+                if (!hoax::contains(attr, edge.dst)) {
                     forced_into_attractors = false;
                     break;
                 }

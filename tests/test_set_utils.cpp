@@ -68,10 +68,10 @@ int test_set_utils() {
 
   {
     /* Test set membership. */
-    assert(!hoax::contains(&s1, 0));
-    assert(hoax::contains(&s1, 1));
-    assert(!hoax::contains(&empty, 0));
-    assert(!hoax::contains(&empty, 1));
+    assert(!hoax::contains(s1, 0));
+    assert(hoax::contains(s1, 1));
+    assert(!hoax::contains(empty, 0));
+    assert(!hoax::contains(empty, 1));
   }
 
   return 0;
