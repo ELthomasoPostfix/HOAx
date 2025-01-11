@@ -109,10 +109,10 @@ namespace hoax {
                             Else solve for the "parity min" condition.
     */
     void zielonka(
-        std::set<int> *W0,
-        std::set<int> *W1,
-        const std::set<int> *vertices,
-        const std::set<int> *vertices_even,
+        std::set<int> &W0,
+        std::set<int> &W1,
+        const std::set<int> &vertices,
+        const std::set<int> &vertices_even,
         const HOAxParityTwA &aut,
         const bool parity_max);
 
