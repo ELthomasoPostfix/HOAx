@@ -231,6 +231,9 @@ void hoax::zielonka(
     }
     // The player to support.
     const int player = std::abs(m) % 2;
+    const int player_other = (player + 1) % 2;
+    assert((player == PEVEN && player_other == PODD) ||
+           (player == PODD  && player_other == PEVEN));
 
 
     // The vertices matching the extremum priority.
@@ -244,9 +247,8 @@ void hoax::zielonka(
     std::set<int> vertices_odd = *vertices - *vertices_even;
 
 
-    const int depth_max = vertices->size();
     std::set<int> R = {};
-    hoax::attractor(&R, vertices, &vertices_odd, vertices_even, aut, &M, depth_max, player);
+    hoax::attractor(R, *vertices, vertices_odd, *vertices_even, aut, M, player);
 
 
     /* Determine W_i and W_(i-1) based on the chosen player. */
@@ -274,9 +276,8 @@ void hoax::zielonka(
         // W_(i-1) = emptyset
         assert(Wprev_p0->empty());
     } else {
-        const int player_other = (player + 1) % 2;
         std::set<int> S = {};
-        hoax::attractor(&S, vertices, &vertices_odd, vertices_even, aut, &Wprev_p1, depth_max, player_other);
+        hoax::attractor(S, *vertices, vertices_odd, *vertices_even, aut, Wprev_p1, player_other);
 
 
         // The order of the result sets depends on the current player, i.
@@ -302,21 +303,19 @@ void hoax::zielonka(
 }
 
 void hoax::attractor(
-    std::set<int> *attr,
-    const std::set<int> *vertices_all,
-    const std::set<int> *vertices_odd,
-    const std::set<int> *vertices_even,
+    std::set<int> &attr,
+    const std::set<int> &vertices_all,
+    const std::set<int> &vertices_odd,
+    const std::set<int> &vertices_even,
     const HOAxParityTwA &aut,
-    const std::set<int> *T,
-    const int k,
-    const int i) {
-    assert(k >= 0); // Avoid invalid attractor recursion depth.
+    const std::set<int> &T,
+    const unsigned int i) {
     assert(i == PEVEN || i == PODD); // Avoid invalid player.
 
     // Attr_i^0(G, T) = T
-    attr->insert(T->begin(), T->end());
-    unsigned int size = attr->size();
-    const std::set<int> *vertices = nullptr;
+    attr.insert(T.begin(), T.end());
+    unsigned int attr_size = attr.size();
+    const unsigned int k = vertices_all.size();
     for (unsigned int it = 0; it < k; it++) {
         std::set<int> attr_rec;
 
@@ -324,17 +323,17 @@ void hoax::attractor(
 
         /* Add all vertices where the player i can choose to enter the
             attractor set themselves. */
-        vertices = (i == PEVEN) ? vertices_even : vertices_odd;
-        for (const int vertex : *vertices) {
+        const std::set<int> &vertices_exist = (i == PEVEN) ? vertices_even : vertices_odd;
+        for (const int vertex : vertices_exist) {
             for (auto edge : aut.exp->out(vertex)) {
                 /* We implicitly remove edges from the arena; exclude edges
                     that are not part of the divide-and-conquer sub-arena. */
-                if (!hoax::contains(vertices_all, edge.dst))
+                if (!hoax::contains(&vertices_all, edge.dst))
                     continue;
                 // The edge is an out edge of vertex, so vertex should be the src
                 assert(vertex == edge.src);
 
-                if (hoax::contains(attr, edge.dst)) {
+                if (hoax::contains(&attr, edge.dst)) {
                     attr_rec.insert(vertex);
                     break;
                 }
@@ -343,19 +342,19 @@ void hoax::attractor(
 
         /* Add all vertices where the player i can force the other player to
             enter the attractor set. */
-        vertices = (i == PEVEN) ? vertices_odd : vertices_even;
-        for (const int vertex : *vertices) {
+        const std::set<int> &vertices_forall = (i == PEVEN) ? vertices_odd : vertices_even;
+        for (const int vertex : vertices_forall) {
             bool forced_into_attractors = true;
             for (auto edge : aut.exp->out(vertex)) {
                 /* We implicitly remove edges from the arena; exclude edges
                     that are not part of the divide-and-conquer sub-arena. */
-                if (!hoax::contains(vertices_all, edge.dst))
+                if (!hoax::contains(&vertices_all, edge.dst))
                     continue;
 
                 // The edge is an out edge of vertex, so vertex should be the src
                 assert(vertex == edge.src);
 
-                if (!hoax::contains(attr, edge.dst)) {
+                if (!hoax::contains(&attr, edge.dst)) {
                     forced_into_attractors = false;
                     break;
                 }
@@ -364,14 +363,14 @@ void hoax::attractor(
                 attr_rec.insert(vertex);
         }
 
-        attr->insert(attr_rec.begin(), attr_rec.end());
+        attr.insert(attr_rec.begin(), attr_rec.end());
 
         /* Fixpoint reached, further iteration is redundant. */
-        if (attr->size() == size)
+        if (attr.size() == attr_size)
             return;
 
         /* Fixpoint not reached, update the var used to verify a fixpoint! */
-        size = attr->size();
+        attr_size = attr.size();
     }
 }
 

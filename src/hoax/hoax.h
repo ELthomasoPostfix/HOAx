@@ -126,26 +126,24 @@ namespace hoax {
         of all "odd" resp. "even" states in the entire automaton.
 
         @param[out] attr The attractor set
-        @param[in] vertices The set of all states in the parity arena
-                            which to include in the attractor computation
+        @param[in] vertices_all The set of all states in the parity arena
+                                which to include in the attractor computation
         @param[in] vertices_odd The set of "odd player states" in the parity arena
                                 which to include in the attractor computation
         @param[in] vertices_odd The set of "even player states" in the parity arena
                                 which to include in the attractor computation
         @param[in] aut The parity arena
         @param[in] T The vertices from which to start the attractor computation
-        @param[in] k The maximum recursion depth at which a fixpoint is guaranteed
         @param[in] i The player for whom to compute the attractor set
     */
     void attractor(
-        std::set<int> *attr,
-        const std::set<int> *vertices,
-        const std::set<int> *vertices_odd,
-        const std::set<int> *vertices_even,
+        std::set<int> &attr,
+        const std::set<int> &vertices_all,
+        const std::set<int> &vertices_odd,
+        const std::set<int> &vertices_even,
         const HOAxParityTwA &aut,
-        const std::set<int> *T,
-        const int k,
-        const int i);
+        const std::set<int> &T,
+        const unsigned int i);
 
     /** The parity game priority function for a single edge.
 
