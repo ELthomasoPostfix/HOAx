@@ -105,11 +105,6 @@ hoax::HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t 
 }
 
 bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
-    std::set<int> W0 = {};  // The "even player" winning states
-    std::set<int> W1 = {};  // The "odd player" winning states
-    std::set<int> vertices = this->get_all_states();
-    std::set<int> vertices_even = this->get_even_states();
-
     /* Pre-compute the transition-based priorities. */
     auto priorities = this->exp->get_or_set_named_prop<std::vector<int>>(PROP_HOAX_PRIOR);
     auto state_player = this->exp->get_or_set_named_prop<std::vector<bool>>(PROP_SPOT_STATE_PLAYER);
@@ -125,7 +120,9 @@ bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
         if (state_player->at(state) == PEVEN)
             priorities->at(state) = priority(this->exp, state, parity_max);
 
-    hoax::zielonka(W0, W1, vertices, vertices_even, *this, parity_max);
+    std::set<int> vertices = this->get_all_states();
+    std::set<int> vertices_even = this->get_even_states();
+    auto[W0, W1, _] = hoax::zielonka(vertices, vertices_even, *this, parity_max);
 
     /* Setup the hoax counterpart to spot's "state-winner" named prop. */
     auto state_winners_hoax = this->exp->get_or_set_named_prop<std::vector<bool>>(PROP_HOAX_STATE_WINNER);
@@ -202,9 +199,8 @@ std::set<int> hoax::HOAxParityTwA::get_odd_states() const {
     return states;
 }
 
-void hoax::zielonka(
-    std::set<int> &W0,
-    std::set<int> &W1,
+std::tuple<std::set<int>, std::set<int>, unsigned int>
+hoax::zielonka(
     const std::set<int> &vertices,
     const std::set<int> &vertices_even,
     const HOAxParityTwA &aut,
@@ -212,13 +208,9 @@ void hoax::zielonka(
 
     aut.assert_deadline();
 
-    // The sets W0 and W1 are output params, they should be empty initially.
-    assert(W0.empty());
-    assert(W1.empty());
-
     /* Base case: no more vertices remain to be checked. */
     if (vertices_even.empty())
-        return;
+        return std::make_tuple<std::set<int>, std::set<int>>({}, {}, PINVALID);
 
 
     /* Support a player based on the extremum priority's parity. */
@@ -245,63 +237,47 @@ void hoax::zielonka(
 
     // All remaining odd/Adam vertices.
     std::set<int> vertices_odd = vertices - vertices_even;
+    std::set<int> R = hoax::attractor(vertices, vertices_odd, vertices_even, aut, M, player);
 
+    // Recursively solve for (G \ R)
+    auto[Wcurr_p1, Wprev_p1, player_rec_R] = hoax::zielonka(vertices - R, vertices_even - R, aut, parity_max);
+    /* The recursive call could support the opposite player than this call does.
+        If so, swap the returned sets so that they match the current supported player.*/
+    if (player_rec_R != player) std::swap(Wcurr_p1, Wprev_p1);
 
-    std::set<int> R = {};
-    hoax::attractor(R, vertices, vertices_odd, vertices_even, aut, M, player);
-
-
-    /* Determine W_i and W_(i-1) based on the chosen player. */
-    std::set<int> &Wcurr_p0 = player == PEVEN ? W0 : W1;  // W_i     = i == 0 ? W0 : W1
-    std::set<int> &Wprev_p0 = player == PEVEN ? W1 : W0;  // W_(i-1) = i == 0 ? W1 : W0
-
-
-    std::set<int> W0_p1 = {};  // W'_0
-    std::set<int> W1_p1 = {};  // W'_1
-    {
-        // Recursively solve for (G \ R)
-        std::set<int> vertices_rem = vertices - R;
-        std::set<int> vertices_even_rem = vertices_even - R;
-        hoax::zielonka(W0_p1, W1_p1, vertices_rem, vertices_even_rem, aut, parity_max);
-    }
-
-    // The order of the result sets depends on the current player, i.
-    std::set<int> Wcurr_p1 = player == PEVEN ? W0_p1 : W1_p1;  // W'_i
-    std::set<int> Wprev_p1 = player == PEVEN ? W1_p1 : W0_p1;  // W'_(i-1)
-
-
+    // The non-supported player cannot escape the attractor.
     if (Wprev_p1.empty()) {
-        // W_i = W'_i U R
-        Wcurr_p0 = std::move(hoax::merge(Wcurr_p1, R));
-        // W_(i-1) = emptyset
-        assert(Wprev_p0.empty());
+        return std::make_tuple<std::set<int>, std::set<int>>(
+            // W_i = W'_i U R
+            std::move(hoax::merge(Wcurr_p1, R)),
+            // W_(i-1) = emptyset
+            {},
+            // The supported player
+            player
+        );
+    // The non-supported player can escape the attractor.
     } else {
-        std::set<int> S = {};
-        hoax::attractor(S, vertices, vertices_odd, vertices_even, aut, Wprev_p1, player_other);
+        std::set<int> S = hoax::attractor(vertices, vertices_odd, vertices_even, aut, Wprev_p1, player_other);
 
+        // Recursively solve for (G \ S)
+        auto[Wcurr_p2, Wprev_p2, player_rec_S] = hoax::zielonka(vertices - S, vertices_even - S, aut, parity_max);
+        /* The recursive call could support the opposite player than this call does.
+            If so, swap the returned sets so that they match the current supported player.*/
+        if (player_rec_S != player) std::swap(Wcurr_p2, Wprev_p2);
 
-        std::set<int> W0_p2 = {};  // W''_0
-        std::set<int> W1_p2 = {};  // W''_1
-        {
-            // Recursively solve for (G \ S)
-            std::set<int> vertices_rem = vertices - S;
-            std::set<int> vertices_even_rem = vertices_even - S;
-            hoax::zielonka(W0_p2, W1_p2, vertices_rem, vertices_even_rem, aut, parity_max);
-        }
-        // The order of the result sets depends on the current player, i.
-        std::set<int> Wcurr_p2 = player == PEVEN ? W0_p2 : W1_p2;  // W''_i
-        std::set<int> Wprev_p2 = player == PEVEN ? W1_p2 : W0_p2;  // W''_(i-1)
-
-
-        // W_i = W''_i
-        Wcurr_p0 = std::move(Wcurr_p2);
-        // W_(i-1) = W''_(i-1) U S
-        Wprev_p0 = std::move(hoax::merge(Wprev_p2, S));
+        return std::make_tuple<std::set<int>, std::set<int>>(
+            // W_i = W''_i
+            std::move(Wcurr_p2),
+            // W_(i-1) = W''_(i-1) U S
+            std::move(hoax::merge(Wprev_p2, S)),
+            // The supported player
+            player
+        );
     }
 }
 
-void hoax::attractor(
-    std::set<int> &attr,
+std::set<int>
+hoax::attractor(
     const std::set<int> &vertices_all,
     const std::set<int> &vertices_odd,
     const std::set<int> &vertices_even,
@@ -311,7 +287,7 @@ void hoax::attractor(
     assert(i == PEVEN || i == PODD); // Avoid invalid player.
 
     // Attr_i^0(G, T) = T
-    attr.insert(T.begin(), T.end());
+    std::set<int> attr(T.begin(), T.end());
     unsigned int attr_size = attr.size();
     const unsigned int k = vertices_all.size();
     for (unsigned int it = 0; it < k; it++) {
@@ -365,11 +341,12 @@ void hoax::attractor(
 
         /* Fixpoint reached, further iteration is redundant. */
         if (attr.size() == attr_size)
-            return;
+            return attr;
 
         /* Fixpoint not reached, update the var used to verify a fixpoint! */
         attr_size = attr.size();
     }
+    return attr;
 }
 
 int hoax::priority(const spot::acc_cond::mark_t &mark, const bool parity_max) {

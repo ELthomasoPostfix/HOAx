@@ -17,6 +17,8 @@ namespace hoax {
     #define PEVEN 0
     /** The player 'index' for the odd player, player 1, Adam. */
     #define PODD  1
+    /** An invalid player 'index'. Avoid using this in (equality) comparisons. */
+    #define PINVALID  2
 
     /* Define spot named property constants. */
     #define PROP_SPOT_STATE_WINNER "state-winner"
@@ -100,17 +102,16 @@ namespace hoax {
 
     /** Zielonka's algorithm for solving a parity game.
 
-        @param[out] W0 The winning set of player 0, Eve.
-        @param[out] W1 The winning set of player 1, Adam.
         @param[in] vertices All vertices to parition into W0 and W1.
         @param[in] vertices_even The "even player" subset of vertices
         @param[in] aut The parity game arena.
         @param[in] parity_max If true, then solve for the "parity max" condition.
                             Else solve for the "parity min" condition.
+        @return The tuple (W0, W1, i) where W0, W1 are the even resp. odd winning sets
+                and i is the supported player of the zielonka call
     */
-    void zielonka(
-        std::set<int> &W0,
-        std::set<int> &W1,
+    std::tuple<std::set<int>, std::set<int>, unsigned int>
+    zielonka(
         const std::set<int> &vertices,
         const std::set<int> &vertices_even,
         const HOAxParityTwA &aut,
@@ -125,7 +126,6 @@ namespace hoax {
         should be subsets of, but not necessarily equal to, the complete sets
         of all "odd" resp. "even" states in the entire automaton.
 
-        @param[out] attr The attractor set
         @param[in] vertices_all The set of all states in the parity arena
                                 which to include in the attractor computation
         @param[in] vertices_odd The set of "odd player states" in the parity arena
@@ -135,9 +135,10 @@ namespace hoax {
         @param[in] aut The parity arena
         @param[in] T The vertices from which to start the attractor computation
         @param[in] i The player for whom to compute the attractor set
+        @return The attractor set
     */
-    void attractor(
-        std::set<int> &attr,
+    std::set<int>
+    attractor(
         const std::set<int> &vertices_all,
         const std::set<int> &vertices_odd,
         const std::set<int> &vertices_even,
