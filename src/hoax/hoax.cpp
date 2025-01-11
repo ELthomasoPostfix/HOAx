@@ -256,19 +256,19 @@ void hoax::zielonka(
     std::set<int> &Wprev_p0 = player == PEVEN ? W1 : W0;  // W_(i-1) = i == 0 ? W1 : W0
 
 
-    // The order of the result sets depends on the current player, i.
-    std::set<int> Wcurr_p1 = {};  // W'_i
-    std::set<int> Wprev_p1 = {};  // W'_(i-1)
+    std::set<int> W0_p1 = {};  // W'_0
+    std::set<int> W1_p1 = {};  // W'_1
     {
         // Recursively solve for (G \ R)
         std::set<int> vertices_rem = vertices - R;
         std::set<int> vertices_even_rem = vertices_even - R;
-        hoax::zielonka(Wcurr_p1, Wprev_p1, vertices_rem, vertices_even_rem, aut, parity_max);
+        hoax::zielonka(W0_p1, W1_p1, vertices_rem, vertices_even_rem, aut, parity_max);
     }
-    /* The arguments W0 and W1 correspond to the even resp. odd player.
-        But zielonka works with W_i and W_(i-1) instead, so swap the sets
-        based on which player we support. */
-    if (player == PODD) std::swap(Wcurr_p1, Wprev_p1);
+
+    // The order of the result sets depends on the current player, i.
+    std::set<int> Wcurr_p1 = player == PEVEN ? W0_p1 : W1_p1;  // W'_i
+    std::set<int> Wprev_p1 = player == PEVEN ? W1_p1 : W0_p1;  // W'_(i-1)
+
 
     if (Wprev_p1.empty()) {
         // W_i = W'_i U R
@@ -280,19 +280,17 @@ void hoax::zielonka(
         hoax::attractor(S, vertices, vertices_odd, vertices_even, aut, Wprev_p1, player_other);
 
 
-        // The order of the result sets depends on the current player, i.
-        std::set<int> Wcurr_p2 = {};  // W''_i
-        std::set<int> Wprev_p2 = {};  // W''_(i-1)
+        std::set<int> W0_p2 = {};  // W''_0
+        std::set<int> W1_p2 = {};  // W''_1
         {
             // Recursively solve for (G \ S)
             std::set<int> vertices_rem = vertices - S;
             std::set<int> vertices_even_rem = vertices_even - S;
-            hoax::zielonka(Wcurr_p2, Wprev_p2, vertices_rem, vertices_even_rem, aut, parity_max);
+            hoax::zielonka(W0_p2, W1_p2, vertices_rem, vertices_even_rem, aut, parity_max);
         }
-        /* The arguments W0 and W1 correspond to the even resp. odd player.
-            But zielonka works with W_i and W_(i-1) instead, so swap the sets
-            based on which player we support. */
-        if (player == PEVEN) std::swap(Wcurr_p2, Wprev_p2);
+        // The order of the result sets depends on the current player, i.
+        std::set<int> Wcurr_p2 = player == PEVEN ? W0_p2 : W1_p2;  // W''_i
+        std::set<int> Wprev_p2 = player == PEVEN ? W1_p2 : W0_p2;  // W''_(i-1)
 
 
         // W_i = W''_i
