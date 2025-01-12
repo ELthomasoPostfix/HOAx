@@ -11,6 +11,12 @@ static int flag_verbose = 0;
 /** Flag set by "-b" */
 static int flag_baseline = 0;
 
+/** Flag set by "-d" */
+static int flag_dump = 0;
+
+/** Flag set by "-s" */
+static int flag_strict = 0;
+
 /** The default output directory. */
 const std::filesystem::path DEFAULT_DIR_OUT("output/");
 
@@ -24,7 +30,7 @@ const unsigned int RUNTIME_MAX_SEC = 480;
 
 int main(int argc, char *argv[]) {
   while (true) {
-    switch (getopt(argc, argv, "hvb")) {
+    switch (getopt(argc, argv, "hvbds")) {
       case 'v':
         flag_verbose = 1;
         continue;
@@ -33,15 +39,24 @@ int main(int argc, char *argv[]) {
         flag_baseline = 1;
         continue;
 
+      case 'd':
+        flag_dump = 1;
+        continue;
+
+      case 's':
+        flag_strict = 1;
+        continue;
+
       case 'h': {
         std::cout << "Usage: hoax [options] [arguments]" << std::endl;
         std::cout << "Options:" << std::endl;
         std::cout << "  -h             Show this help message and exit" << std::endl;
         std::cout << "  -v             Enable verbose output" << std::endl;
         std::cout << "  -b             Call spot's parity game solver as a baseline comparison" << std::endl;
+        std::cout << "  -d             Dump the original and expanded automata as dot files to the default output dir (" << DEFAULT_DIR_OUT.c_str() << ")" << std::endl;
+        std::cout << "  -s             Run in strict mode; enforce the presence, absence and value of parts of the input automaton" << std::endl;
         std::cout << "Arguments:" << std::endl;
-        std::cout << "  A space separated list of file paths to" << std::endl;
-        std::cout << "  eHOA input files of parity games (arenas)" << std::endl;
+        std::cout << "  A space separated list of file paths to eHOA input files of parity games (arenas)" << std::endl;
         exit(0);
       }
     }
@@ -65,13 +80,9 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    // Customize parser options. See
-    // https://spot.lre.epita.fr/doxygen/structspot_1_1automaton__parser__options.html
-    spot::automaton_parser_options opts = {true, false, true, false, false, true};
-    spot::environment& env = spot::default_environment::instance();
     // Parse a HOA file. See
     // https://spot.lre.epita.fr/doxygen/group__twa__io.html#ga7ddd70d2b02e1234814a2f7fa6afe052
-    spot::parsed_aut_ptr pa = spot::parse_aut(path_in, spot::make_bdd_dict(), env, opts);
+    spot::parsed_aut_ptr pa = spot::parse_aut(path_in, spot::make_bdd_dict());
     if (flag_verbose && pa->format_errors(std::cout)) {
       printf("SKIP\tFORMAT ERR\t%s\n", path_in.c_str());
       continue;
@@ -92,7 +103,7 @@ int main(int argc, char *argv[]) {
     // Since it's a spot extension to HOA, our inputs should not have it!
     prop_name = PROP_SPOT_STATE_PLAYER;
     auto state_player = aut->get_named_prop<std::vector<bool>>(prop_name);
-    if (state_player != nullptr) {
+    if (flag_strict && state_player != nullptr) {
       printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
       continue;
     }
@@ -102,7 +113,7 @@ int main(int argc, char *argv[]) {
     // Since it's a spot extension to HOA, our inputs should not have it!
     prop_name = PROP_SPOT_STATE_WINNER;
     auto state_winner = aut->get_named_prop<std::vector<bool>>(prop_name);
-    if (state_winner != nullptr) {
+    if (flag_strict && state_winner != nullptr) {
       printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
       continue;
     }
@@ -112,7 +123,7 @@ int main(int argc, char *argv[]) {
     // Since it's a spot extension to HOA, our inputs should not have it!
     prop_name = PROP_SPOT_STRAT;
     auto strategy = aut->get_named_prop<std::vector<unsigned>>(prop_name);
-    if (strategy != nullptr) {
+    if (flag_strict && strategy != nullptr) {
       printf("SKIP\tPROP UNEXPECTED %s\t%s\n", prop_name.c_str(), path_in.c_str());
       continue;
     }
@@ -142,59 +153,41 @@ int main(int argc, char *argv[]) {
 
     /* Enforce the automaton types and properties we expect in the benchmarks.
      */
-    bool pmax = true;  // default = max
-    bool podd = false; // default = even
-    if (!(aut->acc().is_parity(pmax, podd, false) || aut->acc().is_f() || aut->acc().is_t())) {
+    bool pmax, podd;
+    if (flag_strict && !(aut->acc().is_parity(pmax, podd) || aut->acc().is_f() || aut->acc().is_t())) {
       printf("WARN\tNON-PARITY TwA? '%s'\t%s\n", aut->acc().name().c_str(), path_in.c_str());
       continue;
     }
 
-    /* Given the following example HOA headers
-
-          acc-name: parity max even X
-          Acceptance: X ...
-
-      each of the X acceptance sets corresponds to a priority level of the
-      parity game arena's priority function p, as specified in zielonka.
-      So, the priority levels are 0, 1, ..., X.
-
-      Note that every transition in the automaton should be part of EXACTLY one
-      acceptance set, else the transition would have more than one possible
-      priority level!
-    */
-    bool found_invalid_edge = false;
-    for (const auto &edge : aut->edges()) {
-      if (!edge.acc.is_singleton()) {
-        found_invalid_edge = true;
-        printf("SKIP\t EDGE HAS %i ACCEPTING SETS, EXPECTED EXACTLY 1\t%s\n", edge.acc.count(), path_in.c_str());
-        break;
-      }
-    }
-    if (found_invalid_edge)
-      continue;
-
-    // TODO: For Buchi automata, annotate any transition without acceptance set
-    //       with odd parity/acceptance set 1? Because we want to solve for
-    //       parity even, so all transitions/states already annotated correspond
-    //       with even/0 parity? Or just re-read the mail of Guillermo.
 
 
     try {
+      /* FIRST solve using my own implementation, so that I cannot mistake
+          spot's solution for my own. */
       hoax::HOAxParityTwA hptwa = hoax::HOAxParityTwA(aut, start, deadline);
-      hptwa.set_state_names();
 
       // Call my own implementation of a parity game solver.
       // If the player we expect to win equals the player that actually wins,
       // then the game is realizable.
-      const bool SOL_COMPUTED = podd == hptwa.solve_parity_game(pmax);
+      const bool SOL_COMPUTED = podd == hptwa.solve_parity_game();
       const std::string SOL_STR_COMPUTED = SOL_COMPUTED ? "REAL" : "UNREAL";
 
-      if (flag_verbose) {
-        // hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.src);
-        // hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.exp);
+      if (flag_dump) {
+        hptwa.set_state_names();
+
+        std::filesystem::path ext_path(DEFAULT_DIR_OUT);
+        ext_path.append("EXT_");
+
+        hoax::to_dot(path_in, DEFAULT_DIR_OUT, hptwa.src);
+        hoax::to_dot(path_in, ext_path, hptwa.exp);
       }
 
-      if (flag_baseline) {
+      /* Print only my own realizability result & input file path. */
+      if (!flag_verbose)
+        printf ("%s\t%s\n", SOL_STR_COMPUTED.c_str(), path_in.c_str());
+      /* Else, also use spot's result as a baseline. */
+      else {
+      
         /* Compare against spot's implementation as a baseline.
 
           Spot's docs state about the arena input that "The arena is a
@@ -246,9 +239,6 @@ int main(int argc, char *argv[]) {
           aut->num_sets(),
           path_in.c_str());
       }
-      else
-        printf ("%s\t%s\n",
-          SOL_STR_COMPUTED.c_str(), path_in.c_str());
     } catch (std::runtime_error &e) {
       std::cout << "SKIP\t" << e.what() << "\t" << path_in.string() << std::endl;
     }

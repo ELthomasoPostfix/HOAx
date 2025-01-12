@@ -70,18 +70,16 @@ namespace hoax {
 
             i.e. the actual arena may have any acceptance condition,
             but the algorithm checks if the odd player can win the
-            game from the initial state, given the additional min/max
-            parity parameter.
+            game from the initial state, given the min/max parity
+            parameter derived from the acceptance condition.
 
-            @param[in] parity_max If true, then solve for the "parity max" condition.
-                                  Else solve for the "parity min" condition.
             @return true iff. the "odd" player wins from the initial state.
                     false else, i.e. the "even" player wins from the initial state.
                     Since the "odd" player is represented by "1" or "true" and
                     the "even" player is represented by "0" or "false",
                     the return value is effectively the winning player.
          */
-        bool solve_parity_game(const bool parity_max) const;
+        bool solve_parity_game() const;
 
         /** Overwrite the "state-names" named spot prop of the parity arena. */
         void set_state_names();

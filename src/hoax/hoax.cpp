@@ -104,14 +104,17 @@ hoax::HOAxParityTwA::HOAxParityTwA(const spot::twa_graph_ptr aut, const clock_t 
     std::fill(state_player->begin() + this->src->num_states(), state_player->end(), false);
 }
 
-bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
-    /* Pre-compute the transition-based priorities. */
+bool hoax::HOAxParityTwA::solve_parity_game() const {
+    bool parity_max, podd;
+    this->src->acc().is_parity(parity_max, podd);
+
+    /* Pre-compute state-based priorities from the transition-based priorities. */
     auto priorities = this->exp->get_or_set_named_prop<std::vector<int>>(PROP_HOAX_PRIOR);
     auto state_player = this->exp->get_or_set_named_prop<std::vector<bool>>(PROP_SPOT_STATE_PLAYER);
     /* The default priorities must be odd, since we only update the "even player" priorities. */
     const int priority_min = INT_MIN + 1;
     const int priority_max = INT_MAX;
-    assert(abs(priority_min % 2) == 1 && (priority_max % 2) == 1);
+    assert((abs(priority_min)%2 == 1) && (priority_max%2 == 1));
     /* Initialize every state to the least significant priority. */
     priorities->resize(this->exp->num_states(), parity_max ? priority_min : priority_max);
     /* Only the "even player" states have actual priorities, by construction
@@ -123,6 +126,20 @@ bool hoax::HOAxParityTwA::solve_parity_game(const bool parity_max) const {
     std::set<int> vertices = this->get_all_states();
     std::set<int> vertices_even = this->get_even_states();
     auto[W0, W1, _] = hoax::zielonka(vertices, vertices_even, *this, parity_max);
+
+    /* FIXME: Dirty hack; The solver has problems with the number of accepting
+        sets being even VS odd. The proper way to solve this is likely by
+        transforming the edge acceptance sets, like spot does here:
+            https://gitlab.lre.epita.fr/spot/spot/-/blob/next/spot/twaalgos/game.cc#L348
+
+        But this would take brain power and time, so a hack it is:
+                   | parity max   parity min
+        -------------------------------------
+        #Accs EVEN |    swap         swap
+        #Accs ODD  |  dont swap    dont swap
+     */
+    bool num_accs_even = (this->src->acc().num_sets() % 2) == 0;
+    if (num_accs_even) std::swap(W0, W1);
 
     /* Setup the hoax counterpart to spot's "state-winner" named prop. */
     auto state_winners_hoax = this->exp->get_or_set_named_prop<std::vector<bool>>(PROP_HOAX_STATE_WINNER);

@@ -92,4 +92,5 @@ void hoax::to_dot(const std::filesystem::path &path_in, const std::filesystem::p
     if (!dot_of.is_open())
         throw std::runtime_error("Could not open ofstream to print to dot.");
     spot::print_dot(dot_of, aut);
+    std::cout << "Dumped dot file to: " << path_out_dot.c_str() << std::endl;
 }
