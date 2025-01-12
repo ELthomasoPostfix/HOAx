@@ -19,7 +19,7 @@ const std::filesystem::path DEFAULT_DIR_IN("input/");
 
 /** The maximum runtime allowed for solving a parity game, in seconds.
     Quit early if this deadline is exceeded. */
-const unsigned int RUNTIME_MAX_SEC = 300;
+const unsigned int RUNTIME_MAX_SEC = 480;
 
 
 int main(int argc, char *argv[]) {
@@ -237,9 +237,14 @@ int main(int argc, char *argv[]) {
         const std::string sodd = podd ? "ODD" : "EVEN";
         const std::string smax = pmax ? "MAX" : "MIN";
 
-        printf ("<%s, %s> %s %s\t%s\t%s\n",
-          smax.c_str(), sodd.c_str(), SOL_STR_COMPUTED.c_str(),
-          SOL_STR_ACTUAL.c_str(), (std::to_string((clock() - hptwa.start) / (float)CLOCKS_PER_SEC) + "s").c_str(), path_in.c_str());
+        printf ("<%s, %s> %s %s\t%s\t#ACs=%i\t%s\n",
+          smax.c_str(),
+          sodd.c_str(),
+          SOL_STR_COMPUTED.c_str(),
+          SOL_STR_ACTUAL.c_str(),
+          (std::to_string((clock() - hptwa.start) / (float)CLOCKS_PER_SEC) + "s").c_str(),
+          aut->num_sets(),
+          path_in.c_str());
       }
       else
         printf ("%s\t%s\n",

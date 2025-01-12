@@ -107,8 +107,9 @@ namespace hoax {
         @param[in] aut The parity game arena.
         @param[in] parity_max If true, then solve for the "parity max" condition.
                             Else solve for the "parity min" condition.
-        @return The tuple (W0, W1, i) where W0, W1 are the even resp. odd winning sets
-                and i is the supported player of the zielonka call
+        @return The tuple (W_i, W_(1-i), i) where i is the supported player of
+                the zielonka call and where W_i, W_(1-i) are the winning sets
+                of the supported resp. non-supported player.
     */
     std::tuple<std::set<int>, std::set<int>, unsigned int>
     zielonka(
