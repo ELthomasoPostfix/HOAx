@@ -154,7 +154,8 @@ int main(int argc, char *argv[]) {
     /* Enforce the automaton types and properties we expect in the benchmarks.
      */
     bool pmax, podd;
-    if (flag_strict && !(aut->acc().is_parity(pmax, podd) || aut->acc().is_f() || aut->acc().is_t())) {
+    bool isparity = aut->acc().is_parity(pmax, podd);
+    if (flag_strict && !(isparity || aut->acc().is_f() || aut->acc().is_t())) {
       printf("WARN\tNON-PARITY TwA? '%s'\t%s\n", aut->acc().name().c_str(), path_in.c_str());
       continue;
     }
@@ -184,7 +185,9 @@ int main(int argc, char *argv[]) {
 
       /* Print only my own realizability result & input file path. */
       if (!flag_verbose)
-        printf ("%s\t%s\n", SOL_STR_COMPUTED.c_str(), path_in.c_str());
+        std::cout << SOL_STR_COMPUTED.c_str() << "\t"
+                  << (std::to_string((clock() - hptwa.start) / (float)CLOCKS_PER_SEC) + "s").c_str() << "\t"
+                  << path_in.c_str() << std::endl;
       /* Else, also use spot's result as a baseline. */
       else {
       
