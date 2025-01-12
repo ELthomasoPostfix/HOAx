@@ -1,0 +1,46 @@
+HOA: v1
+name: "(X!p2 & G(p2 U Xp0)) | (Xp2 & F(!p2 R X!p0))"
+States: 10
+Start: 0
+AP: 2 "p2" "p0"
+acc-name: parity min odd 2
+Acceptance: 2 Fin(0) & Inf(1)
+properties: trans-labels explicit-labels trans-acc complete
+properties: deterministic
+controllable-AP: 1
+--BODY--
+State: 0
+[!0] 1
+[0] 2
+State: 1
+[!0&1] 3
+[0&!1] 4
+[0&1] 5
+[!0&!1] 9
+State: 2
+[!0] 3
+[0] 5
+State: 3
+[!0&1] 3 {1}
+[0&1] 6
+[!1] 9
+State: 4
+[t] 4 {1}
+State: 5
+[0&1] 5 {0}
+[0&!1] 5 {1}
+[!0] 7 {0}
+State: 6
+[!0] 3 {1}
+[0&!1] 6
+[0&1] 8 {1}
+State: 7
+[!1] 4
+[0&1] 5
+[!0&1] 7
+State: 8
+[!0] 3 {1}
+[0] 6
+State: 9
+[t] 9
+--END--
